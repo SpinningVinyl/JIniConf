@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 public class IniConfReader {
 
     private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(.*)\\]\\s$");
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("^;.*$");
+    private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
     private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
 
     private static boolean error = false;
