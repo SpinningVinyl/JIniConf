@@ -33,14 +33,34 @@ public class IniConfReader {
 
     private static IniConfDict parse(String chunk) {
 
+
         String[] lines = chunk.split("\\R");
         IniConfDict result = new IniConfDict();
+        IniConfDict currentDict = result;
+        String currentSection = "";
+
         for (String line: lines) {
             Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
             Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
             Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
+            if (commentMatcher.find()) {
+                break; // comment -- skip the line
+            }
+            if (sectionMatcher.find()) {
+                currentSection = sectionMatcher.group(1);
+            }
+            if (propertyMatcher.find()) {
+                if (!currentSection.isEmpty()) {
+                    if (result.getSubsection(currentSection) == null) {
+                        result.addSubsection(currentSection, new IniConfDict());
+                    } else {
+                        currentDict = result.getSubsection(currentSection);
+                        currentDict.put(propertyMatcher.group(1), propertyMatcher.group(2));
+                    }
+                }
+            }
         }
-        return null;
+        return result;
     }
 
 }
