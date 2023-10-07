@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 public class IniConfReader {
 
-    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(.*)\\]\\s$");
+    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(\\w+)]\\s*$");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
     private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
 
@@ -44,7 +44,7 @@ public class IniConfReader {
             Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
             Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
             if (commentMatcher.find()) {
-                break; // comment -- skip the line
+                continue; // comment -- skip the line
             }
             if (sectionMatcher.find()) {
                 currentSection = sectionMatcher.group(1);
@@ -53,11 +53,10 @@ public class IniConfReader {
                 if (!currentSection.isEmpty()) {
                     if (result.getSubsection(currentSection) == null) {
                         result.addSubsection(currentSection, new IniConfDict());
-                    } else {
-                        currentDict = result.getSubsection(currentSection);
-                        currentDict.put(propertyMatcher.group(1), propertyMatcher.group(2));
                     }
+                    currentDict = result.getSubsection(currentSection);
                 }
+                currentDict.put(propertyMatcher.group(1), propertyMatcher.group(2));
             }
         }
         return result;
