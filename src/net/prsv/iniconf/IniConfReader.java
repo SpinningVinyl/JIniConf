@@ -3,13 +3,14 @@ package net.prsv.iniconf;
 import java.io.File;
 import java.io.IOException;
 import java.util.Scanner;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class IniConfReader {
 
     private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(.*)\\]\\s$");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^;.*$");
-    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*\"?(.*?)\"?\\s*$");
+    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
 
     private static boolean error = false;
 
@@ -34,9 +35,10 @@ public class IniConfReader {
 
         String[] lines = chunk.split("\\R");
         IniConfDict result = new IniConfDict();
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-
+        for (String line: lines) {
+            Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
+            Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
+            Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
         }
         return null;
     }
