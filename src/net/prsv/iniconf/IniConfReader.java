@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 public class IniConfReader {
 
-    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(\\w+)]\\s*$");
+    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[([\\w.]+)]\\s*$");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
     private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
 
@@ -33,11 +33,10 @@ public class IniConfReader {
 
     private static IniConfDict parse(String chunk) {
 
-
         String[] lines = chunk.split("\\R");
         IniConfDict result = new IniConfDict();
         IniConfDict currentDict = result;
-        String currentSection = "";
+        String currentSection;
 
         for (String line: lines) {
             Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
@@ -47,15 +46,17 @@ public class IniConfReader {
                 continue; // comment -- skip the line
             }
             if (sectionMatcher.find()) {
+                currentDict = result;
                 currentSection = sectionMatcher.group(1);
+                String[] sectionPath = currentSection.split("\\.");
+                for (String section : sectionPath) {
+                    if (currentDict.getSubsection(section) == null) {
+                        currentDict.addSubsection(section, new IniConfDict());
+                    }
+                    currentDict = currentDict.getSubsection(section);
+                }
             }
             if (propertyMatcher.find()) {
-                if (!currentSection.isEmpty()) {
-                    if (result.getSubsection(currentSection) == null) {
-                        result.addSubsection(currentSection, new IniConfDict());
-                    }
-                    currentDict = result.getSubsection(currentSection);
-                }
                 currentDict.put(propertyMatcher.group(1), propertyMatcher.group(2));
             }
         }
