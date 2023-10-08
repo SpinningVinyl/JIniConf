@@ -19,7 +19,7 @@ public class IniConfWriter {
         } catch (IOException e) {
             return false;
         }
-        return false;
+        return true;
     }
 
     public static String flatten(IniConf dict, String currentDictName) {
