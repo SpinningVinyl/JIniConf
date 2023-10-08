@@ -8,8 +8,8 @@ import java.util.regex.Pattern;
 
 public class IniConfReader {
 
-    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[([\\w.]+)]\\s*$");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
+    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[([\\w.]+)]\\s*$");
     private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
 
     private static boolean error = false;
@@ -17,12 +17,18 @@ public class IniConfReader {
     // do not instantiate
     private IniConfReader() {}
 
+    /**
+     * Read the specified file and tries to parse it as an INI file.
+     * @param filename name of the input file
+     * @return the resulting {@link IniConfDict} object
+     */
     public static IniConfDict read(String filename) {
         File inputFile = new File(filename);
         String chunk = "";
         try (Scanner s = new Scanner(inputFile)) {
-            chunk = s.useDelimiter("\\Z").next();
+            chunk = s.useDelimiter("\\Z").next(); // read the whole file at once
         } catch (IOException e) {
+            e.printStackTrace();
             error = true;
         }
         if (error) {
@@ -40,8 +46,8 @@ public class IniConfReader {
 
         for (String line: lines) {
             Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
-            Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
             Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
+            Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
             if (commentMatcher.find()) {
                 continue; // comment -- skip the line
             }
