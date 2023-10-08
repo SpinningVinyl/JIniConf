@@ -18,7 +18,8 @@ public class IniConfReader {
     private IniConfReader() {}
 
     /**
-     * Read the specified file and tries to parse it as an INI file.
+     * Reads the specified file and tries to parse it as an INI file. Returns an {@link IniConfDict} object or {@code null}
+     * if an {@link IOException} occurs while reading the file.
      * @param filename name of the input file
      * @return the resulting {@link IniConfDict} object
      */
@@ -38,9 +39,14 @@ public class IniConfReader {
         return parse(chunk);
     }
 
-    private static IniConfDict parse(String chunk) {
+    /**
+     * Parses the specified string and returns the resulting {@link IniConfDict} object.
+     * @param input {@link String} to be parsed
+     * @return the resulting {@link IniConfDict} object
+     */
+    public static IniConfDict parse(String input) {
 
-        String[] lines = chunk.split("\\R");
+        String[] lines = input.split("\\R");
         IniConfDict result = new IniConfDict();
         IniConfDict currentDict = result;
         String currentSection;
@@ -54,7 +60,7 @@ public class IniConfReader {
             }
             if (sectionMatcher.find()) {
                 currentDict = result;
-                currentSection = sectionMatcher.group(1);
+                currentSection = sectionMatcher.group(1).toLowerCase();
                 String[] sectionPath = currentSection.split("\\.");
                 for (String section : sectionPath) {
                     if (currentDict.getSubsection(section) == null) {
@@ -64,7 +70,7 @@ public class IniConfReader {
                 }
             }
             if (propertyMatcher.find()) {
-                currentDict.put(propertyMatcher.group(1), propertyMatcher.group(2));
+                currentDict.put(propertyMatcher.group(1).toLowerCase(), propertyMatcher.group(2));
             }
         }
         return result;
