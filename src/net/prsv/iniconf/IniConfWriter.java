@@ -22,7 +22,7 @@ public class IniConfWriter {
         return false;
     }
 
-    private static String flatten(IniConf dict, String currentDictName) {
+    public static String flatten(IniConf dict, String currentDictName) {
         Map<String, String> properties = dict.getProperties();
         Map<String, IniConf> sections = dict.getSubsections();
         StringBuilder sb = new StringBuilder();
