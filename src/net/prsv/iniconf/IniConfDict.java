@@ -54,4 +54,12 @@ public class IniConfDict {
         return subsections.put(name, subsection);
     }
 
+    protected HashMap<String, String> getProperties() {
+        return properties;
+    }
+
+    protected HashMap<String, IniConfDict> getSubsections() {
+        return subsections;
+    }
+
 }
