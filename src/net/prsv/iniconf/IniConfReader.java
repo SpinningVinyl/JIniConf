@@ -34,6 +34,7 @@ public class IniConfReader {
         if (error) {
             return null;
         }
+        chunk = chunk.replace('\u0000', '\ufffd');
         return parse(chunk);
     }
 
