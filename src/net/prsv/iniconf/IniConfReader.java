@@ -18,12 +18,12 @@ public class IniConfReader {
     private IniConfReader() {}
 
     /**
-     * Reads the specified file and tries to parse it as an INI file. Returns an {@link IniConfDict} object or {@code null}
+     * Reads the specified file and tries to parse it as an INI file. Returns an {@link IniConf} object or {@code null}
      * if an {@link IOException} occurs while reading the file.
      * @param filename name of the input file
-     * @return the resulting {@link IniConfDict} object
+     * @return the resulting {@link IniConf} object
      */
-    public static IniConfDict read(String filename) {
+    public static IniConf read(String filename) {
         File inputFile = new File(filename);
         String chunk = "";
         try (Scanner s = new Scanner(inputFile)) {
@@ -40,15 +40,15 @@ public class IniConfReader {
     }
 
     /**
-     * Parses the specified string and returns the resulting {@link IniConfDict} object.
+     * Parses the specified string and returns the resulting {@link IniConf} object.
      * @param input {@link String} to be parsed
-     * @return the resulting {@link IniConfDict} object
+     * @return the resulting {@link IniConf} object
      */
-    public static IniConfDict parse(String input) {
+    public static IniConf parse(String input) {
 
         String[] lines = input.split("\\R");
-        IniConfDict result = new IniConfDict();
-        IniConfDict currentDict = result;
+        IniConf result = new IniConf();
+        IniConf currentDict = result;
         String currentSection;
 
         for (String line: lines) {
@@ -64,7 +64,7 @@ public class IniConfReader {
                 String[] sectionPath = currentSection.split("\\.");
                 for (String section : sectionPath) {
                     if (currentDict.getSubsection(section) == null) {
-                        currentDict.addSubsection(section, new IniConfDict());
+                        currentDict.addSubsection(section, new IniConf());
                     }
                     currentDict = currentDict.getSubsection(section);
                 }
