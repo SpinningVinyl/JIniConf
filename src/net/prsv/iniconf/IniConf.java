@@ -2,16 +2,34 @@ package net.prsv.iniconf;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class IniConf {
+
+    private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
+    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[([\\w.]+)]\\s*$");
+    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
+
     private final HashMap<String, String> properties;
     private final HashMap<String, IniConf> subsections;
 
+    /**
+     * Constructs an empty IniConf object.
+     */
     public IniConf() {
         properties = new HashMap<>();
         subsections = new HashMap<>();
+    }
+
+    /**
+     * Parses the input string and creates a new IniConf object.
+     * @param input the {@link String} to be parsed
+     */
+    public IniConf(String input) {
+        this();
+        parse(input);
     }
 
     /**
@@ -68,7 +86,7 @@ public class IniConf {
      * if no such subsection exists.
      * @param name the name of subsection to be returned
      * @return subsection associated with the specified subsection name, or {@code null}
-     *         if no such subsection exists
+     * if no such subsection exists
      */
     public IniConf getSubsection(String name) {
         return subsections.get(name);
@@ -86,12 +104,80 @@ public class IniConf {
         return subsections.put(name, subsection);
     }
 
+    /**
+     * Returns an unmodifiable {@link Map} view of all properties in this IniConf object.
+     * @return an unmodifiable Map view of all properties in this IniConf object
+     */
     public Map<String, String> getProperties() {
         return Collections.unmodifiableMap(properties);
     }
 
+    /**
+     * Returns an unmodifiable {@link Map} view of all subsections in this IniConf object.
+     * @return an unmodifiable Map view of all subsections in this IniConf object
+     */
     public Map<String, IniConf> getSubsections() {
         return Collections.unmodifiableMap(subsections);
+    }
+
+    /**
+     * Returns a string representation of this IniConf object.
+     * @return a string representation of this IniConf object
+     */
+    @Override
+    public String toString() {
+        return flatten(this, null);
+    }
+
+    private String flatten(IniConf dict, String currentDictName) {
+        Map<String, String> properties = dict.getProperties();
+        Map<String, IniConf> sections = dict.getSubsections();
+        StringBuilder sb = new StringBuilder();
+        if (currentDictName != null) {
+            sb.append('[').append(currentDictName).append(']').append("\n");
+        }
+        if (!properties.isEmpty()) {
+            for (String key : properties.keySet()) {
+                sb.append(key).append(" = ").append(properties.get(key)).append("\n");
+            }
+            sb.append("\n");
+        }
+        for (String dictName : sections.keySet()) {
+            sb.append(flatten(sections.get(dictName),
+                    currentDictName == null ? dictName : currentDictName + '.' + dictName));
+        }
+        return sb.toString();
+    }
+
+    private void parse(String input) {
+        String[] lines = input.split("\\R");
+        IniConf currentDict = this;
+        String currentSection;
+
+        for (String line: lines) {
+            Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
+            Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
+            Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
+            if (commentMatcher.find()) {
+                continue; // comment -- skip the line
+            }
+            if (sectionMatcher.find()) {
+                currentDict = this;
+                currentSection = sectionMatcher.group(1).toLowerCase();
+                // create new subsections if they don't already exist
+                String[] sectionPath = currentSection.split("\\.");
+                for (String section : sectionPath) {
+                    if (currentDict.getSubsection(section) == null) {
+                        currentDict.addSubsection(section, new IniConf());
+                    }
+                    currentDict = currentDict.getSubsection(section);
+                }
+            }
+            if (propertyMatcher.find()) {
+                // add new property to the current IniConf object
+                currentDict.put(propertyMatcher.group(1).toLowerCase(), propertyMatcher.group(2));
+            }
+        }
     }
 
 }

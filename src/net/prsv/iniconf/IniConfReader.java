@@ -3,14 +3,8 @@ package net.prsv.iniconf;
 import java.io.File;
 import java.io.IOException;
 import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class IniConfReader {
-
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
-    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[([\\w.]+)]\\s*$");
-    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
 
     private static boolean error = false;
 
@@ -36,44 +30,7 @@ public class IniConfReader {
             return null;
         }
         chunk = chunk.replace('\u0000', '\ufffd');
-        return parse(chunk);
-    }
-
-    /**
-     * Parses the specified string and returns the resulting {@link IniConf} object.
-     * @param input {@link String} to be parsed
-     * @return the resulting {@link IniConf} object
-     */
-    public static IniConf parse(String input) {
-
-        String[] lines = input.split("\\R");
-        IniConf result = new IniConf();
-        IniConf currentDict = result;
-        String currentSection;
-
-        for (String line: lines) {
-            Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
-            Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
-            Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
-            if (commentMatcher.find()) {
-                continue; // comment -- skip the line
-            }
-            if (sectionMatcher.find()) {
-                currentDict = result;
-                currentSection = sectionMatcher.group(1).toLowerCase();
-                String[] sectionPath = currentSection.split("\\.");
-                for (String section : sectionPath) {
-                    if (currentDict.getSubsection(section) == null) {
-                        currentDict.addSubsection(section, new IniConf());
-                    }
-                    currentDict = currentDict.getSubsection(section);
-                }
-            }
-            if (propertyMatcher.find()) {
-                currentDict.put(propertyMatcher.group(1).toLowerCase(), propertyMatcher.group(2));
-            }
-        }
-        return result;
+        return new IniConf(chunk);
     }
 
 }
