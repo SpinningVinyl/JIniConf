@@ -140,7 +140,14 @@ public class IniConf {
      * @return {@code true} if this IniConf has a subsection with the specified name, {@code false} otherwise.
      */
     public boolean isSubsection(String sectionName) {
-        return subsections.containsKey(sectionName);
+        IniConf currentDict = this;
+        String[] sectionPath = sectionName.split("\\.");
+        for (String section : sectionPath) {
+            if (currentDict.getSubsection(section) == null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -151,7 +158,15 @@ public class IniConf {
      * if no such subsection exists
      */
     public IniConf getSubsection(String name) {
-        return subsections.get(name);
+        IniConf currentDict = this;
+        String[] sectionPath = name.split("\\.");
+        for (String section : sectionPath) {
+            if (currentDict.getSubsection(section) == null) {
+                return null;
+            }
+            currentDict = currentDict.getSubsection(section);
+        }
+        return currentDict;
     }
 
     /**
