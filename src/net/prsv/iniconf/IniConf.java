@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 public class IniConf {
 
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("^.*[\\t\\f ].*$");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
     private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[([\\w.]+)]\\s*$");
     private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
@@ -138,7 +139,12 @@ public class IniConf {
         }
         if (!properties.isEmpty()) {
             for (String key : properties.keySet()) {
-                sb.append(key).append(" = ").append(properties.get(key)).append("\n");
+                String value = properties.get(key);
+                Matcher whitespaceMatcher = WHITESPACE_PATTERN.matcher(value);
+                if (whitespaceMatcher.find()) {
+                    value = "\"" + value + "\"";
+                }
+                sb.append(key).append(" = ").append(value).append("\n");
             }
             sb.append("\n");
         }
