@@ -34,7 +34,7 @@ public class IniConf {
     }
 
     /**
-     * Associates the specified value with the specified key in this dict. If the dict previously contained a mapping
+     * Associates the specified value with the specified key in this IniConf. If the IniConf previously contained a mapping
      * for the key, the old value is replaced.
      * @param key key with which the specified value is to be associated
      * @param value value to be associated with the specified key
@@ -65,9 +65,9 @@ public class IniConf {
     }
 
     /**
-     * Checks whether the dict contains the specified key.
+     * Checks whether the IniConf contains the specified key.
      * @param key the key to be checked
-     * @return {@code true} if the dict contains the specified key, {@code false} otherwise.
+     * @return {@code true} if the IniConf contains the specified key, {@code false} otherwise.
      */
     public boolean isKey(String key) {
         return properties.containsKey(key);
@@ -91,9 +91,9 @@ public class IniConf {
     }
 
     /**
-     * Checks whether this dict contains a subsection with the specified name.
+     * Checks whether this IniConf contains a subsection with the specified name.
      * @param sectionName section name to be checked
-     * @return {@code true} if this dict has a subsection with the specified name, {@code false} otherwise.
+     * @return {@code true} if this IniConf has a subsection with the specified name, {@code false} otherwise.
      */
     public boolean isSubsection(String sectionName) {
         return subsections.containsKey(sectionName);
@@ -111,7 +111,7 @@ public class IniConf {
     }
 
     /**
-     * Associates the specified subsection with the specified subsection name. If the dict previously had a subsection
+     * Associates the specified subsection with the specified subsection name. If the IniConf previously had a subsection
      * with the same name, the old subsection is replaced with the new one.
      * @param name the name of subsection to be added
      * @param subsection the subsection to be associated with the specified name
