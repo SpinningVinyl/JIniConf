@@ -72,6 +72,23 @@ public class IniConf {
     public boolean isKey(String key) {
         return properties.containsKey(key);
     }
+    /**
+     * Checks whether the specified subsection contains the specified key.
+     * @param key the key to be checked in the specified subsection
+     * @param subsection the subsection to be checked for the specified key
+     * @return {@code true} if the specified subsection contains the specified key, {@code false} otherwise.
+     */
+    public boolean isKey(String key, String subsection) {
+        IniConf currentDict = this;
+        String[] sectionPath = subsection.split("\\.");
+        for (String section : sectionPath) {
+            if (currentDict.getSubsection(section) == null) {
+                return false;
+            }
+            currentDict = currentDict.getSubsection(section);
+        }
+        return currentDict.isKey(key);
+    }
 
     /**
      * Checks whether this dict contains a subsection with the specified name.
