@@ -45,12 +45,44 @@ public class IniConf {
     }
 
     /**
+     * Associates the specified value with the specified key in the specified subsection of this IniConf.
+     * If the specified subsection of this IniConf previously contained a mapping for the key, the old value is replaced.
+     * @param key key with which the specified value is to be associated
+     * @param value value to be associated with the specified key
+     * @return the value previously associated with the specified key in the specified subsection of this IniConf,
+     * or {@code null} if there was no such value
+     */
+    public String put(String subsection, String key, String value) {
+        IniConf currentDict = this;
+        String[] sectionPath = subsection.split("\\.");
+        for (String section : sectionPath) {
+            if (currentDict.getSubsection(section) == null) {
+                currentDict.addSubsection(section, new IniConf());
+            }
+            currentDict = currentDict.getSubsection(section);
+        }
+        return currentDict.put(key, value);
+    }
+
+    /**
      * Returns the value associated with the specified key, or {@code null} if no such value exists.
      * @param key the key whose associated value is to be returned
      * @return value associated with the specified key, or {@code null} if no such value exists
      */
     public String get(String key) {
         return properties.get(key);
+    }
+
+    public String get(String subsection, String key) {
+        IniConf currentDict = this;
+        String[] sectionPath = subsection.split("\\.");
+        for (String section : sectionPath) {
+            if (currentDict.getSubsection(section) == null) {
+                return null;
+            }
+            currentDict = currentDict.getSubsection(section);
+        }
+        return currentDict.get(key);
     }
 
     /**
@@ -62,6 +94,18 @@ public class IniConf {
      */
     public String getOrDefault(String key, String defaultValue) {
         return properties.getOrDefault(key, defaultValue);
+    }
+
+    public String getOrDefault(String subsection, String key, String defaultValue) {
+        IniConf currentDict = this;
+        String[] sectionPath = subsection.split("\\.");
+        for (String section : sectionPath) {
+            if (currentDict.getSubsection(section) == null) {
+                return defaultValue;
+            }
+            currentDict = currentDict.getSubsection(section);
+        }
+        return currentDict.getOrDefault(key, defaultValue);
     }
 
     /**
@@ -78,7 +122,7 @@ public class IniConf {
      * @param subsection the subsection to be checked for the specified key
      * @return {@code true} if the specified subsection contains the specified key, {@code false} otherwise.
      */
-    public boolean isKey(String key, String subsection) {
+    public boolean isKey(String subsection, String key) {
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
