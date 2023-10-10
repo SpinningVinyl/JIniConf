@@ -120,4 +120,18 @@ public class IniConfTests {
         assertEquals(testObject, testObject4.addSection(testSection, new IniConf()));
     }
 
+    @Test
+    void getSectionTest() {
+        IniConf testObject5 = testObject.getSection("section3");
+        assertNotNull(testObject5);
+        assertFalse(testObject5.isEmpty());
+        assertTrue(testObject5.isKey("key6"));
+        assertTrue(testObject5.isKey("subsection1", "key"));
+        assertTrue(testObject5.isSection("subsection1.subsubsection2"));
+        assertEquals("this is value 6", testObject5.get("key6"));
+        assertEquals("value9", testObject5.get("subsection1.subsubsection2", "key9"));
+        assertEquals("default", testObject5.getOrDefault("subsection1.subsubsection2",
+                "key12", "default"));
+    }
+
 }
