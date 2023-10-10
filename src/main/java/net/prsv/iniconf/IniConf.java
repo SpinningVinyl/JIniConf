@@ -220,6 +220,52 @@ public class IniConf {
         return flatten(this, null);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null) {
+            return false;
+        }
+        if (o.getClass() != this.getClass()) {
+            return false;
+        }
+        IniConf that = (IniConf) o;
+        if (that.properties.size() != this.properties.size()) {
+            return false;
+        } else {
+            for (String key : this.properties.keySet()) {
+                if (!this.properties.get(key).equals(that.properties.get(key))) {
+                    return false;
+                }
+            }
+        }
+        if (this.subsections.size() != that.subsections.size()) {
+            return false;
+        } else {
+            for (String section : this.subsections.keySet()) {
+                if (!this.subsections.get(section).equals(that.subsections.get(section))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result;
+        result = 23 * properties.hashCode();
+
+        if (!subsections.isEmpty()) {
+            for (String section : subsections.keySet()) {
+                result += subsections.get(section).hashCode();
+            }
+        }
+        return result;
+    }
+
     private String flatten(IniConf dict, String currentDictName) {
         Map<String, String> properties = dict.getProperties();
         Map<String, IniConf> sections = dict.getSubsections();
