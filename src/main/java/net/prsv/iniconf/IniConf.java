@@ -65,7 +65,7 @@ public class IniConf {
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
             if (currentDict.getChild(section) == null) {
-                currentDict.addSubsection(section, new IniConf());
+                currentDict.addChild(section, new IniConf());
             }
             currentDict = currentDict.getChild(section);
         }
@@ -166,7 +166,7 @@ public class IniConf {
      * @return subsection associated with the specified subsection name, or {@code null}
      * if no such subsection exists
      */
-    public IniConf getSubsection(String name) {
+    public IniConf getSection(String name) {
         IniConf currentDict = this;
         String[] sectionPath = name.split("\\.");
         for (String section : sectionPath) {
@@ -182,17 +182,28 @@ public class IniConf {
         return subsections.get(name);
     }
 
+    private IniConf addChild(String name, IniConf section) {
+        return subsections.put(name, section);
+    }
 
     /**
      * Associates the specified subsection with the specified subsection name. If the IniConf previously had a subsection
      * with the same name, the old subsection is replaced with the new one.
      * @param name the name of subsection to be added
-     * @param subsection the subsection to be associated with the specified name
+     * @param section the subsection to be associated with the specified name
      * @return the subsection previously associated with the specified name, or {@code null} if there was no such
      * subsection.
      */
-    public IniConf addSubsection(String name, IniConf subsection) {
-        return subsections.put(name, subsection);
+    public IniConf addSection(String name, IniConf section) {
+        IniConf currentDict = this;
+        String[] sectionPath = name.split("\\.");
+        for (int i = 0; i < sectionPath.length - 1; i++) {
+            if (currentDict.getChild(sectionPath[i]) == null) {
+                currentDict.addChild(sectionPath[i], new IniConf());
+            }
+            currentDict = currentDict.getChild(sectionPath[i]);
+        }
+        return currentDict.addChild(sectionPath[sectionPath.length - 1], section);
     }
 
     /**
@@ -207,7 +218,7 @@ public class IniConf {
      * Returns an unmodifiable {@link Map} view of all subsections in this IniConf object.
      * @return an unmodifiable Map view of all subsections in this IniConf object
      */
-    public Map<String, IniConf> getSubsections() {
+    public Map<String, IniConf> getSections() {
         return Collections.unmodifiableMap(subsections);
     }
 
@@ -268,7 +279,7 @@ public class IniConf {
 
     private String flatten(IniConf dict, String currentDictName) {
         Map<String, String> properties = dict.getProperties();
-        Map<String, IniConf> sections = dict.getSubsections();
+        Map<String, IniConf> sections = dict.getSections();
         StringBuilder sb = new StringBuilder();
         if (currentDictName != null) {
             sb.append('[').append(currentDictName).append(']').append("\n");
@@ -310,7 +321,7 @@ public class IniConf {
                 String[] sectionPath = currentSection.split("\\.");
                 for (String section : sectionPath) {
                     if (currentDict.getChild(section) == null) {
-                        currentDict.addSubsection(section, new IniConf());
+                        currentDict.addChild(section, new IniConf());
                     }
                     currentDict = currentDict.getChild(section);
                 }
