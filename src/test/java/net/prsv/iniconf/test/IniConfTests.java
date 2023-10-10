@@ -117,11 +117,15 @@ public class IniConfTests {
     @Test
     void addSectionTest() {
         String testSection = "section.subsection.subsubsection";
-        String illegalTestSection = "section/subsection subsubsection";
+        String illegalTestSection1 = "section/subsection";
+        String illegalTestSection2 = "section subsection";
+        String illegalTestSection3 = "section\u0000subsection";
         IniConf testObject4 = new IniConf();
         assertNull(testObject4.addSection(testSection, new IniConf(testObject.toString())));
         assertEquals(testObject, testObject4.addSection(testSection, new IniConf()));
-        assertThrows(IllegalArgumentException.class, () -> testObject4.addSection(illegalTestSection, new IniConf()));
+        assertThrows(IllegalArgumentException.class, () -> testObject4.addSection(illegalTestSection1, new IniConf()));
+        assertThrows(IllegalArgumentException.class, () -> testObject4.addSection(illegalTestSection2, new IniConf()));
+        assertThrows(IllegalArgumentException.class, () -> testObject4.addSection(illegalTestSection3, new IniConf()));
     }
 
     @Test
