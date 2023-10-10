@@ -147,7 +147,7 @@ public class IniConf {
      * @param sectionName section name to be checked
      * @return {@code true} if this IniConf has a subsection with the specified name, {@code false} otherwise.
      */
-    public boolean isSubsection(String sectionName) {
+    public boolean isSection(String sectionName) {
         IniConf currentDict = this;
         String[] sectionPath = sectionName.split("\\.");
         for (String section : sectionPath) {
