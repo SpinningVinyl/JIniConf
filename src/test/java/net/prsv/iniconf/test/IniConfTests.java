@@ -95,6 +95,7 @@ public class IniConfTests {
     @Test
     void putTest() {
         String testKey = "test_key";
+        String illegalTestKey = "test key with spaces";
         String testValue = "test value";
         String testValue2 = "another test value";
         String testSection = "section.subsection.subsubsection";
@@ -110,14 +111,17 @@ public class IniConfTests {
         assertEquals(testValue, testObject3.put(testKey, testValue2));
         assertEquals(testValue2, testObject3.get(testKey));
         assertEquals(testValue2, testObject3.get(testSection, testKey));
+        assertThrows(IllegalArgumentException.class, () -> testObject3.put(illegalTestKey, testValue));
     }
 
     @Test
     void addSectionTest() {
         String testSection = "section.subsection.subsubsection";
+        String illegalTestSection = "section/subsection subsubsection";
         IniConf testObject4 = new IniConf();
         assertNull(testObject4.addSection(testSection, new IniConf(testObject.toString())));
         assertEquals(testObject, testObject4.addSection(testSection, new IniConf()));
+        assertThrows(IllegalArgumentException.class, () -> testObject4.addSection(illegalTestSection, new IniConf()));
     }
 
     @Test
