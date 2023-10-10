@@ -112,4 +112,12 @@ public class IniConfTests {
         assertEquals(testValue2, testObject3.get(testSection, testKey));
     }
 
+    @Test
+    void addSectionTest() {
+        String testSection = "section.subsection.subsubsection";
+        IniConf testObject4 = new IniConf();
+        assertNull(testObject4.addSection(testSection, new IniConf(testObject.toString())));
+        assertEquals(testObject, testObject4.addSection(testSection, new IniConf()));
+    }
+
 }
