@@ -47,6 +47,21 @@ public class IniConfTests {
     }
 
     @Test
+    void isSectionTest() {
+        assertTrue(testObject.isSection("section1"));
+        assertTrue(testObject.isSection("section2"));
+        assertTrue(testObject.isSection("section3"));
+        assertTrue(testObject.isSection("section3.subsection1"));
+        assertTrue(testObject.isSection("section3.subsection2"));
+        assertTrue(testObject.isSection("section3.subsection1.subsubsection1"));
+        assertTrue(testObject.isSection("section3.subsection1.subsubsection2"));
+        assertTrue(testObject.isSection("section3.subsection2.subsubsection1"));
+        assertFalse(testObject.isSection("section4"));
+        assertFalse(testObject.isSection("section1.subsection1"));
+        assertFalse(testObject.isSection("section3.subsection1.subsubsection5"));
+    }
+
+    @Test
     void getTest() {
         assertEquals("ns_value2", testObject.get("ns_key2"));
         assertEquals("value5", testObject.get("section3", "key5"));
