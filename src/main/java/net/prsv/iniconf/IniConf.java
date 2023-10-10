@@ -34,6 +34,14 @@ public class IniConf {
     }
 
     /**
+     * Checks whether this IniConf object is empty.
+     * @return {@code true} if this IniConf contains no properties and no sections
+     */
+    public boolean isEmpty() {
+        return properties.isEmpty() && subsections.isEmpty();
+    }
+
+    /**
      * Associates the specified value with the specified key in this IniConf. If the IniConf previously contained a mapping
      * for the key, the old value is replaced.
      * @param key key with which the specified value is to be associated
