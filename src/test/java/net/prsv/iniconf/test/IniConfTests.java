@@ -92,5 +92,24 @@ public class IniConfTests {
         assertNotEquals(testObject.hashCode(), testObject2.hashCode());
     }
 
+    @Test
+    void putTest() {
+        String testKey = "test_key";
+        String testValue = "test value";
+        String testValue2 = "another test value";
+        String testSection = "section.subsection.subsubsection";
+        IniConf testObject3 = new IniConf();
+        assertTrue(testObject3.isEmpty());
+        testObject3.put(testKey, testValue);
+        assertFalse(testObject3.isEmpty());
+        assertTrue(testObject3.isKey(testKey));
+        testObject3.put(testSection, testKey, testValue);
+        assertTrue(testObject3.isSection(testSection));
+        assertTrue(testObject3.isKey(testSection, testKey));
+        assertEquals(testValue, testObject3.put(testSection, testKey, testValue2));
+        assertEquals(testValue, testObject3.put(testKey, testValue2));
+        assertEquals(testValue2, testObject3.get(testKey));
+        assertEquals(testValue2, testObject3.get(testSection, testKey));
+    }
 
 }
