@@ -1,0 +1,144 @@
+* JIniConf
+This is a small library for working with =.INI= (or =.conf=) configuration files in Java.
+
+It is intentionally designed to be as simple as possible. For example, it stores all values as simple strings, meaning that it is the responsibility of the client application to convert them to whatever format is required.
+
+Despite its simplicity, it supports nested sections, which are stored as nested ~IniConf~ objects.
+
+** Reading and parsing .INI files
+Let's suppose we have the following =.INI= file which is named =sample.ini=:
+
+#+begin_src
+; This is a comment
+# This is also a comment
+ns_key1 = ns_value1
+ns_key2 = ns_value2
+
+[section1]
+key1 = value1
+key2 = value2
+
+[section2]
+# This is a comment on its own line
+key3 = value3
+key4 = value4
+
+[section3]
+key5 = value5
+key6 = "this is value 6"
+
+[section3.subsection1]
+key = value
+
+[section3.subsection1.subsubsection1]
+key8 = value8
+
+[section3.subsection1.subsubsection2]
+key9 = value9
+
+[section3.subsection2]
+key = value
+
+[section3.subsection2.subsubsection1]
+key = value
+#+end_src
+
+To load the file, use the ~IniConfReader~ class:
+
+#+begin_src java
+IniConf iniConf = IniConfReader.read("sample.ini");
+if (iniConf != null) {
+    // do stuff
+}
+#+end_src
+
+Alternatively, you could write your own code to load the contents of the file into a string. In this case, to create a new ~IniConf~ object from the string do the following:
+
+#+begin_src java
+IniConf iniConf = new IniConf(input);
+#+end_src
+
+To check if the newly created ~IniConf~ object is empty, use the ~isEmpty()~ method.
+
+The ~isKey()~ method is used to check whether the property exists. The ~get()~ method is used to get the value associated with the given key:
+
+#+begin_src java
+String value;
+if (iniConf.isKey("ns_key1")) {
+    value = iniConf.get("ns_key1");
+}
+#+end_src
+
+Or the same thing, but for a property in one of the nested sections:
+
+#+begin_src java
+String value;
+if (iniConf.isKey("section3.subsection1.subsubsection1", "key8")) {
+    value = iniConf.get("section3.subsection1.subsubsection1", "key8");
+}
+#+end_src
+
+There is also a convenience method called ~getOrDefault()~ which returns the value associated with the given key is such a value exist, or the default value otherwise:
+
+#+begin_src java
+String value = iniConf.getOrDefault("section3.subsection1.subsubsection1", "key11", "default_value");
+#+end_src
+
+To get a whole section as an ~IniConf~ object:
+
+#+begin_src java
+IniConf section;
+if (iniConf.isSection("section3.subsection1.subsubsection1")) {
+    section = iniConf.getSection("section3.subsection1.subsusbsection1");
+}
+#+end_src
+
+It is possible to get all properties stored in an ~IniConf~ object as an unmodifiable map:
+
+#+begin_src java
+Map<String, String> properties = iniConf.getProperties();
+#+end_src
+
+You can also get all sections as an unmodifiable map:
+
+#+begin_src java
+Map<String, IniConf> sections = iniConf.getSections();
+#+end_src
+
+** Creating and modifiying IniConf objects
+
+Create a new ~IniConf~ object:
+
+#+begin_src java
+IniConf iniConf = new IniConf();
+#+end_src
+
+Add properties:
+
+#+begin_src java
+iniConf.put("key", "value");
+iniConf.put("section.subsection", "key", "value");
+#+end_src
+
+Add sections:
+
+#+begin_src java
+iniConf.addSection("section1");
+iniConf.addSection("section2");
+iniConf.addSection("level1.level2.level3");
+#+end_src
+
+Get a ~String~ representation of an ~IniConf~ object which can be saved to an =.INI= file:
+
+#+begin_src java
+String iniString = iniConf.toString();
+#+end_src
+
+Or use ~IniConfWriter~ to save an =.INI= file:
+
+#+begin_src java
+IniConfWriter.write(iniConf);
+#+end_src
+
+** License
+This code is licensed under the terms of the MIT license. See LICENSE.txt for details.
