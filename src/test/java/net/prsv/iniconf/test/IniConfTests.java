@@ -56,6 +56,16 @@ public class IniConfTests {
     }
 
     @Test
+    void getOrDefaultTest() {
+        assertEquals("ns_value2", testObject.getOrDefault("ns_key2", "default"));
+        assertEquals("default", testObject.getOrDefault("ns_key3", "default"));
+        assertEquals("value9", testObject.getOrDefault("section3.subsection1.subsubsection2",
+                "key9", "default"));
+        assertEquals("default", testObject.getOrDefault("section3.subsection1.subsubsection2",
+                "key10", "default"));
+    }
+
+    @Test
     void equalsAndHashCodeTest() {
         assertEquals(testObject, testObject);
         IniConf testObject2 = IniConfReader.read(testFilePath);
