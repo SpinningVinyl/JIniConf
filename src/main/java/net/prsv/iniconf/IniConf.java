@@ -10,8 +10,10 @@ public class IniConf {
 
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("^.*[\\t\\f ].*$");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
-    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[([\\w.]+)]\\s*$");
-    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w*)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
+    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[((?:\\w\\.?)+)]\\s*$");
+    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w+)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
+    private static final Pattern KEY_PATTERN = Pattern.compile("^\\w+$");
+    private static final Pattern SECTION_NAME_PATTERN = Pattern.compile("^((?:\\w+\\.?)+)$");
 
     private final HashMap<String, String> properties;
     private final HashMap<String, IniConf> subsections;
@@ -49,6 +51,10 @@ public class IniConf {
      * @return the value previously associated with the specified key, or {@code null} if there was no such value
      */
     public String put(String key, String value) {
+        Matcher keyMatcher = KEY_PATTERN.matcher(key);
+        if (!keyMatcher.find()) {
+            throw new IllegalArgumentException("put(): The key contains illegal characters.");
+        }
         return properties.put(key, value);
     }
 
@@ -195,6 +201,10 @@ public class IniConf {
      * subsection.
      */
     public IniConf addSection(String name, IniConf section) {
+        Matcher sectionMatcher = SECTION_NAME_PATTERN.matcher(name);
+        if (!sectionMatcher.find()) {
+            throw new IllegalArgumentException("addSection(): section name contains illegal characters.");
+        }
         IniConf currentDict = this;
         String[] sectionPath = name.split("\\.");
         for (int i = 0; i < sectionPath.length - 1; i++) {
