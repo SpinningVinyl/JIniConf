@@ -56,10 +56,10 @@ public class IniConf {
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
-            if (currentDict.getSubsection(section) == null) {
+            if (currentDict.getChild(section) == null) {
                 currentDict.addSubsection(section, new IniConf());
             }
-            currentDict = currentDict.getSubsection(section);
+            currentDict = currentDict.getChild(section);
         }
         return currentDict.put(key, value);
     }
@@ -77,10 +77,10 @@ public class IniConf {
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
-            if (currentDict.getSubsection(section) == null) {
+            if (currentDict.getChild(section) == null) {
                 return null;
             }
-            currentDict = currentDict.getSubsection(section);
+            currentDict = currentDict.getChild(section);
         }
         return currentDict.get(key);
     }
@@ -100,10 +100,10 @@ public class IniConf {
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
-            if (currentDict.getSubsection(section) == null) {
+            if (currentDict.getChild(section) == null) {
                 return defaultValue;
             }
-            currentDict = currentDict.getSubsection(section);
+            currentDict = currentDict.getChild(section);
         }
         return currentDict.getOrDefault(key, defaultValue);
     }
@@ -126,10 +126,10 @@ public class IniConf {
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
-            if (currentDict.getSubsection(section) == null) {
+            if (currentDict.getChild(section) == null) {
                 return false;
             }
-            currentDict = currentDict.getSubsection(section);
+            currentDict = currentDict.getChild(section);
         }
         return currentDict.isKey(key);
     }
@@ -143,9 +143,10 @@ public class IniConf {
         IniConf currentDict = this;
         String[] sectionPath = sectionName.split("\\.");
         for (String section : sectionPath) {
-            if (currentDict.getSubsection(section) == null) {
+            if (currentDict.getChild(section) == null) {
                 return false;
             }
+            currentDict = currentDict.getChild(section);
         }
         return true;
     }
@@ -161,13 +162,18 @@ public class IniConf {
         IniConf currentDict = this;
         String[] sectionPath = name.split("\\.");
         for (String section : sectionPath) {
-            if (currentDict.getSubsection(section) == null) {
+            if (currentDict.getChild(section) == null) {
                 return null;
             }
-            currentDict = currentDict.getSubsection(section);
+            currentDict = currentDict.getChild(section);
         }
         return currentDict;
     }
+
+    private IniConf getChild(String name) {
+        return subsections.get(name);
+    }
+
 
     /**
      * Associates the specified subsection with the specified subsection name. If the IniConf previously had a subsection
@@ -249,10 +255,10 @@ public class IniConf {
                 // create new subsections if they don't already exist
                 String[] sectionPath = currentSection.split("\\.");
                 for (String section : sectionPath) {
-                    if (currentDict.getSubsection(section) == null) {
+                    if (currentDict.getChild(section) == null) {
                         currentDict.addSubsection(section, new IniConf());
                     }
-                    currentDict = currentDict.getSubsection(section);
+                    currentDict = currentDict.getChild(section);
                 }
             }
             if (propertyMatcher.find()) {
