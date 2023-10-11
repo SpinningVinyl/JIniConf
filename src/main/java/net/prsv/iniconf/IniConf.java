@@ -110,6 +110,14 @@ public class IniConf {
         return properties.getOrDefault(key, defaultValue);
     }
 
+    /**
+     * Returns the value associated with the specified key in the specified section, or {@code defaultValue} if
+     * there is no such value.
+     * @param key the key whose associated values is to be returned
+     * @param defaultValue the default value to be returned if there is no value associated with the specified key
+     * @return the value to which the specified key in the specified section is mapped, or
+     * {@code defaultValue} if no such value exists
+     */
     public String getOrDefault(String subsection, String key, String defaultValue) {
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
