@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -27,8 +28,9 @@ public class IniConfTests {
 
     @BeforeEach
     void setup() {
-        testObject = IniConfReader.read(testFilePath);
-        assert(testObject != null);
+        Optional<IniConf> readObject = IniConfReader.read(testFilePath);
+        assertTrue(readObject.isPresent());
+        testObject = readObject.get();
     }
 
     @Test
@@ -83,8 +85,9 @@ public class IniConfTests {
     @Test
     void equalsAndHashCodeTest() {
         assertEquals(testObject, testObject);
-        IniConf testObject2 = IniConfReader.read(testFilePath);
-        assert(testObject2 != null);
+        Optional<IniConf> readObject = IniConfReader.read(testFilePath);
+        assertTrue(readObject.isPresent());
+        IniConf testObject2 = readObject.get();
         assertEquals(testObject, testObject2);
         assertEquals(testObject.hashCode(), testObject2.hashCode());
         testObject2.put("section2.subsection1", "key11", "value11");
