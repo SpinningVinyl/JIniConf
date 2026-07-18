@@ -46,11 +46,14 @@ key = value
 To load the file, use the ~IniConfReader~ class:
 
 #+begin_src java
-IniConf iniConf = IniConfReader.read("sample.ini");
-if (iniConf != null) {
+Optional<IniConf> result = IniConfReader.read("sample.ini");
+if (result.isPresent()) {
+    IniConf iniConf = result.get();
     // do stuff
 }
 #+end_src
+
+~IniConfReader.read()~ returns ~Optional.empty()~ if an I/O error occurs while reading the file.
 
 Alternatively, you could write your own code to load the contents of the file into a string. In this case, to create a new ~IniConf~ object from the string do the following:
 
