@@ -3,8 +3,8 @@ package net.prsv.iniconf;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -29,15 +29,15 @@ public final class IniConf {
     private static final Pattern SECTION_NAME_PATTERN = Pattern.compile("^" + SECTION_PATH_REGEX + "$");
     private static final Pattern LINE_TERMINATOR_PATTERN = Pattern.compile("\\R");
 
-    private final HashMap<String, String> properties;
-    private final HashMap<String, IniConf> subsections;
+    private final Map<String, String> properties;
+    private final Map<String, IniConf> subsections;
 
     /**
      * Constructs an empty IniConf object.
      */
     public IniConf() {
-        properties = new HashMap<>();
-        subsections = new HashMap<>();
+        properties = new LinkedHashMap<>();
+        subsections = new LinkedHashMap<>();
     }
 
     /**

@@ -325,6 +325,31 @@ public class IniConfTests {
         assertEquals("key = \"C:\\\\directory\\\\\\\"quoted\\\"\"\n\n", iniConf.toString());
     }
 
+    @Test
+    void serializerPreservesPropertyAndSectionInsertionOrder() {
+        IniConf iniConf = new IniConf();
+        iniConf.put("second", "original");
+        iniConf.put("first", "1");
+        iniConf.put("second", "2");
+
+        IniConf secondSection = new IniConf();
+        secondSection.put("second", "2");
+        secondSection.put("first", "1");
+        iniConf.addSection("section2", secondSection);
+
+        IniConf firstSection = new IniConf();
+        firstSection.put("key", "value");
+        iniConf.addSection("section1", firstSection);
+
+        assertEquals("second = 2\n"
+                + "first = 1\n\n"
+                + "[section2]\n"
+                + "second = 2\n"
+                + "first = 1\n\n"
+                + "[section1]\n"
+                + "key = value\n\n", iniConf.toString());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"", "simple", "users'", "internal spaces", "double \"quotes\"",
             "C:\\directory\\file", "C:\\directory\\\"quoted\" file", "日本語",
