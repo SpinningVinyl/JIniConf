@@ -100,11 +100,11 @@ public class IniConf {
     }
 
     /**
-     * Returns the value associated with the specified key, or {@code defaultValue} if this map contains no mapping
+     * Returns the value associated with the specified key, or {@code defaultValue} if this IniConf object contains no mapping
      * for the key.
      * @param key the key whose associated values is to be returned
      * @param defaultValue the default value to be returned if there is no value associated with the specified key
-     * @return the value to which the specified key is mapped, or {@code defaultValue} if this map contains no mapping for the key
+     * @return the value to which the specified key is mapped, or {@code defaultValue} if this IniConf object contains no mapping for the key
      */
     public String getOrDefault(String key, String defaultValue) {
         return properties.getOrDefault(key, defaultValue);
