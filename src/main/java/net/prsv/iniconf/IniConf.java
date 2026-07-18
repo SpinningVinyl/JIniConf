@@ -1,8 +1,13 @@
 package net.prsv.iniconf;
 
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -207,8 +212,16 @@ public class IniConf {
      * @param section the subsection to be associated with the specified name
      * @return the subsection previously associated with the specified name, or {@code null} if there was no such
      * subsection.
+     * @throws NullPointerException if {@code section} is {@code null}
+     * @throws IllegalArgumentException if adding {@code section} would reuse an existing section or create an
+     * irregular section graph
      */
     public IniConf addSection(String name, IniConf section) {
+        Objects.requireNonNull(section, "section must not be null");
+        if (section == this) {
+            throw new IllegalArgumentException("addSection(): a section cannot contain itself.");
+        }
+        ensureDisjointRegularGraphs(section);
         Matcher sectionMatcher = SECTION_NAME_PATTERN.matcher(name);
         if (!sectionMatcher.find()) {
             throw new IllegalArgumentException("addSection(): section name contains illegal characters.");
@@ -222,6 +235,35 @@ public class IniConf {
             currentDict = currentDict.getChild(sectionPath[i]);
         }
         return currentDict.addChild(sectionPath[sectionPath.length - 1], section);
+    }
+
+    private void ensureDisjointRegularGraphs(IniConf section) {
+        Set<IniConf> currentGraph = collateRegularGraph(this);
+        Set<IniConf> sectionGraph = collateRegularGraph(section);
+        for (IniConf candidate : sectionGraph) {
+            if (currentGraph.contains(candidate)) {
+                throw new IllegalArgumentException("addSection(): section is already part of this section graph.");
+            }
+        }
+    }
+
+    private static Set<IniConf> collateRegularGraph(IniConf root) {
+        Set<IniConf> sections = Collections.newSetFromMap(new IdentityHashMap<>());
+        Deque<IniConf> pending = new ArrayDeque<>();
+        pending.push(root);
+        while (!pending.isEmpty()) {
+            IniConf current = pending.pop();
+            if (!sections.add(current)) {
+                throw new IllegalArgumentException("addSection(): section graph contains a repeated section.");
+            }
+            for (IniConf child : current.subsections.values()) {
+                if (child == null) {
+                    throw new IllegalArgumentException("addSection(): section graph contains a null section.");
+                }
+                pending.push(child);
+            }
+        }
+        return sections;
     }
 
     /**
