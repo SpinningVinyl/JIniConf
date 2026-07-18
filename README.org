@@ -53,7 +53,8 @@ if (result.isPresent()) {
 }
 #+end_src
 
-~IniConfReader.read()~ returns ~Optional.empty()~ if an I/O error occurs while reading the file.
+~IniConfReader~ decodes files as UTF-8. Its ~read()~ method returns ~Optional.empty()~ if an I/O error occurs while
+reading the file, including when the file does not contain valid UTF-8.
 
 Alternatively, you could write your own code to load the contents of the file into a string. In this case, to create a new ~IniConf~ object from the string do the following:
 
@@ -137,10 +138,10 @@ Get a ~String~ representation of an ~IniConf~ object which can be saved to an =.
 String iniString = iniConf.toString();
 #+end_src
 
-Or use ~IniConfWriter~ to save an =.INI= file:
+Or use ~IniConfWriter~ to save a UTF-8 encoded =.INI= file:
 
 #+begin_src java
-IniConfWriter.write(iniConf);
+IniConfWriter.write("sample.ini", iniConf);
 #+end_src
 
 ** License

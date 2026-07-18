@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -13,6 +14,10 @@ import java.util.regex.Pattern;
 
 /**
  * A mutable representation of an INI configuration containing properties and nested sections.
+ * All textual content is represented as Unicode Java strings; {@link IniConfReader} and {@link IniConfWriter} use
+ * UTF-8 when converting between those strings and files.
+ * Property keys and section names are normalized to lowercase using {@link Locale#ROOT} before they are stored, and
+ * query arguments are normalized in the same way.
  */
 public final class IniConf {
 
@@ -67,7 +72,7 @@ public final class IniConf {
      */
     public String put(String key, String value) {
         validateAgainstPattern(KEY_PATTERN, key);
-        return properties.put(key, normalizeValue(value));
+        return properties.put(normalizeIdentifier(key), normalizeValue(value));
     }
 
     /**
@@ -89,7 +94,7 @@ public final class IniConf {
     public String put(String subsection, String key, String value) {
         validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
         IniConf currentDict = this;
-        String[] sectionPath = subsection.split("\\.");
+        String[] sectionPath = normalizeIdentifier(subsection).split("\\.");
         for (String section : sectionPath) {
             if (currentDict.getChild(section) == null) {
                 currentDict.addChild(section, new IniConf());
@@ -117,13 +122,17 @@ public final class IniConf {
         return value.strip();
     }
 
+    private static String normalizeIdentifier(String identifier) {
+        return identifier.toLowerCase(Locale.ROOT);
+    }
+
     /**
      * Returns the value associated with the specified key, or {@code null} if no such value exists.
      * @param key the key whose associated value is to be returned
      * @return value associated with the specified key, or {@code null} if no such value exists
      */
     public String get(String key) {
-        return properties.get(key);
+        return properties.get(normalizeIdentifier(key));
     }
 
     /**
@@ -138,7 +147,7 @@ public final class IniConf {
     public String get(String subsection, String key) {
         validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
         IniConf currentDict = this;
-        String[] sectionPath = subsection.split("\\.");
+        String[] sectionPath = normalizeIdentifier(subsection).split("\\.");
         for (String section : sectionPath) {
             if (currentDict.getChild(section) == null) {
                 return null;
@@ -156,7 +165,7 @@ public final class IniConf {
      * @return the value to which the specified key is mapped, or {@code defaultValue} if this IniConf object contains no mapping for the key
      */
     public String getOrDefault(String key, String defaultValue) {
-        return properties.getOrDefault(key, defaultValue);
+        return properties.getOrDefault(normalizeIdentifier(key), defaultValue);
     }
 
     /**
@@ -173,7 +182,7 @@ public final class IniConf {
     public String getOrDefault(String subsection, String key, String defaultValue) {
         validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
         IniConf currentDict = this;
-        String[] sectionPath = subsection.split("\\.");
+        String[] sectionPath = normalizeIdentifier(subsection).split("\\.");
         for (String section : sectionPath) {
             if (currentDict.getChild(section) == null) {
                 return defaultValue;
@@ -189,7 +198,7 @@ public final class IniConf {
      * @return {@code true} if the IniConf contains the specified key, {@code false} otherwise.
      */
     public boolean isKey(String key) {
-        return properties.containsKey(key);
+        return properties.containsKey(normalizeIdentifier(key));
     }
     /**
      * Checks whether the specified subsection contains the specified key.
@@ -202,7 +211,7 @@ public final class IniConf {
     public boolean isKey(String subsection, String key) {
         validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
         IniConf currentDict = this;
-        String[] sectionPath = subsection.split("\\.");
+        String[] sectionPath = normalizeIdentifier(subsection).split("\\.");
         for (String section : sectionPath) {
             if (currentDict.getChild(section) == null) {
                 return false;
@@ -222,7 +231,7 @@ public final class IniConf {
     public boolean isSection(String sectionName) {
         validateAgainstPattern(SECTION_NAME_PATTERN, sectionName);
         IniConf currentDict = this;
-        String[] sectionPath = sectionName.split("\\.");
+        String[] sectionPath = normalizeIdentifier(sectionName).split("\\.");
         for (String section : sectionPath) {
             if (currentDict.getChild(section) == null) {
                 return false;
@@ -244,7 +253,7 @@ public final class IniConf {
     public IniConf getSection(String name) {
         validateAgainstPattern(SECTION_NAME_PATTERN, name);
         IniConf currentDict = this;
-        String[] sectionPath = name.split("\\.");
+        String[] sectionPath = normalizeIdentifier(name).split("\\.");
         for (String section : sectionPath) {
             if (currentDict.getChild(section) == null) {
                 return null;
@@ -259,7 +268,7 @@ public final class IniConf {
     }
 
     private IniConf addChild(String name, IniConf section) {
-        return subsections.put(name, section);
+        return subsections.put(normalizeIdentifier(name), section);
     }
 
     /**
@@ -281,7 +290,7 @@ public final class IniConf {
         }
         ensureDisjointRegularGraphs(section);
         IniConf currentDict = this;
-        String[] sectionPath = name.split("\\.");
+        String[] sectionPath = normalizeIdentifier(name).split("\\.");
         for (int i = 0; i < sectionPath.length - 1; i++) {
             if (currentDict.getChild(sectionPath[i]) == null) {
                 currentDict.addChild(sectionPath[i], new IniConf());
@@ -476,7 +485,7 @@ public final class IniConf {
             }
             if (sectionMatcher.find()) {
                 currentDict = this;
-                currentSection = sectionMatcher.group(1).toLowerCase();
+                currentSection = normalizeIdentifier(sectionMatcher.group(1));
                 // create new subsections if they don't already exist
                 String[] sectionPath = currentSection.split("\\.");
                 for (String section : sectionPath) {
@@ -491,7 +500,7 @@ public final class IniConf {
             }
             if (propertyMatcher.find()) {
                 // add new property to the current IniConf object
-                currentDict.put(propertyMatcher.group(1).toLowerCase(),
+                currentDict.put(propertyMatcher.group(1),
                         deserializeValue(propertyMatcher.group(2), lineIndex + 1));
             }
         }
