@@ -17,12 +17,12 @@ import java.util.regex.Pattern;
 public final class IniConf {
 
     private static final String SECTION_PATH_REGEX = "\\w+(?:\\.\\w+)*";
-    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("^.*[\\t\\f ].*$");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
     private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(" + SECTION_PATH_REGEX + ")]\\s*$");
-    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w+)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
+    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w+)\\s*=\\s*(.*?)\\s*$");
     private static final Pattern KEY_PATTERN = Pattern.compile("^\\w+$");
     private static final Pattern SECTION_NAME_PATTERN = Pattern.compile("^" + SECTION_PATH_REGEX + "$");
+    private static final Pattern LINE_TERMINATOR_PATTERN = Pattern.compile("\\R");
 
     private final HashMap<String, String> properties;
     private final HashMap<String, IniConf> subsections;
@@ -39,7 +39,7 @@ public final class IniConf {
      * Parses the input string and creates a new IniConf object.
      * @param input the {@link String} to be parsed
      * @throws NullPointerException if {@code input} is {@code null}
-     * @throws IllegalArgumentException if the input contains an invalid section header
+     * @throws IllegalArgumentException if the input contains an invalid section header or property value
      */
     public IniConf(String input) {
         this();
@@ -58,26 +58,33 @@ public final class IniConf {
      * Associates the specified value with the specified key in this IniConf. If the IniConf previously contained a mapping
      * for the key, the old value is replaced.
      * @param key key with which the specified value is to be associated
-     * @param value value to be associated with the specified key
+     * @param value value to be associated with the specified key; leading and trailing whitespace is removed before
+     *              the value is stored
      * @return the value previously associated with the specified key, or {@code null} if there was no such value
-     * @throws NullPointerException if {@code key} is {@code null}
-     * @throws IllegalArgumentException if {@code key} is invalid
+     * @throws NullPointerException if {@code key} or {@code value} is {@code null}
+     * @throws IllegalArgumentException if {@code key} is invalid, or if {@code value} contains a line terminator or
+     *                                  the NUL character
      */
     public String put(String key, String value) {
         validateAgainstPattern(KEY_PATTERN, key);
-        return properties.put(key, value);
+        return properties.put(key, normalizeValue(value));
     }
 
     /**
      * Associates the specified value with the specified key in the specified subsection of this IniConf.
      * If the specified subsection of this IniConf previously contained a mapping for the key, the old value is replaced.
+     * Creating any missing subsections and inserting the key-value pair are treated as two separate operations.
+     * Consequently, if insertion fails because the key or value is invalid, subsections created while resolving the
+     * specified path remain in this IniConf.
      * @param subsection path of the subsection in which the value is to be associated
      * @param key key with which the specified value is to be associated
-     * @param value value to be associated with the specified key
+     * @param value value to be associated with the specified key; leading and trailing whitespace is removed before
+     *              the value is stored
      * @return the value previously associated with the specified key in the specified subsection of this IniConf,
      * or {@code null} if there was no such value
-     * @throws NullPointerException if {@code subsection} or {@code key} is {@code null}
-     * @throws IllegalArgumentException if {@code subsection} or {@code key} is invalid
+     * @throws NullPointerException if {@code subsection}, {@code key}, or {@code value} is {@code null}
+     * @throws IllegalArgumentException if {@code subsection} or {@code key} is invalid, or if {@code value} contains
+     *                                  a line terminator or the NUL character
      */
     public String put(String subsection, String key, String value) {
         validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
@@ -97,6 +104,17 @@ public final class IniConf {
         if (!matcher.matches()) {
             throw new IllegalArgumentException(String.format("String '%s' does not match the provided pattern: '%s'", str, pattern.toString()));
         }
+    }
+
+    private static String normalizeValue(String value) {
+        Objects.requireNonNull(value, "value must not be null");
+        if (LINE_TERMINATOR_PATTERN.matcher(value).find()) {
+            throw new IllegalArgumentException("value must not contain line terminators");
+        }
+        if (value.indexOf('\0') >= 0) {
+            throw new IllegalArgumentException("value must not contain the NUL character");
+        }
+        return value.strip();
     }
 
     /**
@@ -382,12 +400,7 @@ public final class IniConf {
         }
         if (!properties.isEmpty()) {
             for (String key : properties.keySet()) {
-                String value = properties.get(key);
-                Matcher whitespaceMatcher = WHITESPACE_PATTERN.matcher(value);
-                if (whitespaceMatcher.find()) {
-                    value = "\"" + value + "\"";
-                }
-                sb.append(key).append(" = ").append(value).append("\n");
+                sb.append(key).append(" = ").append(serializeValue(properties.get(key))).append("\n");
             }
             sb.append("\n");
         }
@@ -396,6 +409,56 @@ public final class IniConf {
                     currentDictName == null ? dictName : currentDictName + '.' + dictName));
         }
         return sb.toString();
+    }
+
+    private static String serializeValue(String value) {
+        boolean requiresQuotes = value.isEmpty()
+                || value.indexOf('"') >= 0
+                || value.indexOf('\\') >= 0
+                || value.codePoints().anyMatch(Character::isWhitespace);
+        if (!requiresQuotes) {
+            return value;
+        }
+
+        String encodedValue = value.replace("\\", "\\\\").replace("\"", "\\\"");
+        return '"' + encodedValue + '"';
+    }
+
+    private static String deserializeValue(String value, int lineNumber) {
+        if (!value.startsWith("\"")) {
+            if (value.indexOf('"') >= 0 || value.indexOf('\\') >= 0) {
+                throw invalidPropertyValue(lineNumber, "quotes and backslashes must be encoded in a quoted value");
+            }
+            return value;
+        }
+
+        StringBuilder decodedValue = new StringBuilder();
+        for (int index = 1; index < value.length(); index++) {
+            char current = value.charAt(index);
+            if (current == '"') {
+                if (index != value.length() - 1) {
+                    throw invalidPropertyValue(lineNumber, "unexpected characters after closing quote");
+                }
+                return decodedValue.toString();
+            }
+            if (current == '\\') {
+                if (++index == value.length()) {
+                    throw invalidPropertyValue(lineNumber, "incomplete escape sequence");
+                }
+                char escaped = value.charAt(index);
+                if (escaped != '"' && escaped != '\\') {
+                    throw invalidPropertyValue(lineNumber, "unknown escape sequence: \\" + escaped);
+                }
+                decodedValue.append(escaped);
+            } else {
+                decodedValue.append(current);
+            }
+        }
+        throw invalidPropertyValue(lineNumber, "missing closing quote");
+    }
+
+    private static IllegalArgumentException invalidPropertyValue(int lineNumber, String reason) {
+        return new IllegalArgumentException("Invalid property value at line " + lineNumber + ": " + reason);
     }
 
     private void parse(String input) {
@@ -428,7 +491,8 @@ public final class IniConf {
             }
             if (propertyMatcher.find()) {
                 // add new property to the current IniConf object
-                currentDict.put(propertyMatcher.group(1).toLowerCase(), propertyMatcher.group(2));
+                currentDict.put(propertyMatcher.group(1).toLowerCase(),
+                        deserializeValue(propertyMatcher.group(2), lineIndex + 1));
             }
         }
     }
