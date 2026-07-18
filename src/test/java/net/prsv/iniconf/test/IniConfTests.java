@@ -133,6 +133,40 @@ public class IniConfTests {
     }
 
     @Test
+    void addSectionRejectsRepeatedSectionInstance() {
+        IniConf root = new IniConf();
+        IniConf section = new IniConf();
+        root.addSection("first", section);
+
+        assertThrows(IllegalArgumentException.class, () -> root.addSection("second", section));
+    }
+
+    @Test
+    void addSectionRejectsSelfReference() {
+        IniConf root = new IniConf();
+
+        assertThrows(IllegalArgumentException.class, () -> root.addSection("self", root));
+    }
+
+    @Test
+    void addSectionRejectsAncestorReference() {
+        IniConf root = new IniConf();
+        IniConf child = new IniConf();
+        root.addSection("child", child);
+
+        assertThrows(IllegalArgumentException.class, () -> child.addSection("parent", root));
+    }
+
+    @Test
+    void addSectionAllowsDistinctEqualSection() {
+        IniConf root = new IniConf();
+        IniConf section = new IniConf();
+        assertEquals(root, section);
+
+        assertDoesNotThrow(() -> root.addSection("child", section));
+    }
+
+    @Test
     void getSectionTest() {
         IniConf testObject5 = testObject.getSection("section3");
         assertNotNull(testObject5);
