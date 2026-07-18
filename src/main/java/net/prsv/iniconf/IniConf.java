@@ -11,14 +11,18 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class IniConf {
+/**
+ * A mutable representation of an INI configuration containing properties and nested sections.
+ */
+public final class IniConf {
 
+    private static final String SECTION_PATH_REGEX = "\\w+(?:\\.\\w+)*";
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("^.*[\\t\\f ].*$");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
-    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[((?:\\w\\.?)+)]\\s*$");
+    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(" + SECTION_PATH_REGEX + ")]\\s*$");
     private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w+)\\s*=\\s*['\"]?(.*?)['\"]?\\s*$");
     private static final Pattern KEY_PATTERN = Pattern.compile("^\\w+$");
-    private static final Pattern SECTION_NAME_PATTERN = Pattern.compile("^((?:\\w+\\.?)+)$");
+    private static final Pattern SECTION_NAME_PATTERN = Pattern.compile("^" + SECTION_PATH_REGEX + "$");
 
     private final HashMap<String, String> properties;
     private final HashMap<String, IniConf> subsections;
@@ -34,6 +38,8 @@ public class IniConf {
     /**
      * Parses the input string and creates a new IniConf object.
      * @param input the {@link String} to be parsed
+     * @throws NullPointerException if {@code input} is {@code null}
+     * @throws IllegalArgumentException if the input contains an invalid section header
      */
     public IniConf(String input) {
         this();
@@ -54,24 +60,27 @@ public class IniConf {
      * @param key key with which the specified value is to be associated
      * @param value value to be associated with the specified key
      * @return the value previously associated with the specified key, or {@code null} if there was no such value
+     * @throws NullPointerException if {@code key} is {@code null}
+     * @throws IllegalArgumentException if {@code key} is invalid
      */
     public String put(String key, String value) {
-        Matcher keyMatcher = KEY_PATTERN.matcher(key);
-        if (!keyMatcher.find()) {
-            throw new IllegalArgumentException("put(): The key contains illegal characters.");
-        }
+        validateAgainstPattern(KEY_PATTERN, key);
         return properties.put(key, value);
     }
 
     /**
      * Associates the specified value with the specified key in the specified subsection of this IniConf.
      * If the specified subsection of this IniConf previously contained a mapping for the key, the old value is replaced.
+     * @param subsection path of the subsection in which the value is to be associated
      * @param key key with which the specified value is to be associated
      * @param value value to be associated with the specified key
      * @return the value previously associated with the specified key in the specified subsection of this IniConf,
      * or {@code null} if there was no such value
+     * @throws NullPointerException if {@code subsection} or {@code key} is {@code null}
+     * @throws IllegalArgumentException if {@code subsection} or {@code key} is invalid
      */
     public String put(String subsection, String key, String value) {
+        validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
@@ -83,6 +92,13 @@ public class IniConf {
         return currentDict.put(key, value);
     }
 
+    private static void validateAgainstPattern(Pattern pattern, String str) {
+        Matcher matcher = pattern.matcher(str);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException(String.format("String '%s' does not match the provided pattern: '%s'", str, pattern.toString()));
+        }
+    }
+
     /**
      * Returns the value associated with the specified key, or {@code null} if no such value exists.
      * @param key the key whose associated value is to be returned
@@ -92,7 +108,17 @@ public class IniConf {
         return properties.get(key);
     }
 
+    /**
+     * Returns the value associated with the specified key in the specified subsection, or {@code null} if no such
+     * value exists.
+     * @param subsection path of the subsection containing the key
+     * @param key the key whose associated value is to be returned
+     * @return the value associated with the specified key, or {@code null} if no such value exists
+     * @throws NullPointerException if {@code subsection} is {@code null}
+     * @throws IllegalArgumentException if {@code subsection} is invalid
+     */
     public String get(String subsection, String key) {
+        validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
@@ -118,12 +144,16 @@ public class IniConf {
     /**
      * Returns the value associated with the specified key in the specified section, or {@code defaultValue} if
      * there is no such value.
+     * @param subsection path of the subsection containing the key
      * @param key the key whose associated values is to be returned
      * @param defaultValue the default value to be returned if there is no value associated with the specified key
      * @return the value to which the specified key in the specified section is mapped, or
      * {@code defaultValue} if no such value exists
+     * @throws NullPointerException if {@code subsection} is {@code null}
+     * @throws IllegalArgumentException if {@code subsection} is invalid
      */
     public String getOrDefault(String subsection, String key, String defaultValue) {
+        validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
@@ -148,8 +178,11 @@ public class IniConf {
      * @param key the key to be checked in the specified subsection
      * @param subsection the subsection to be checked for the specified key
      * @return {@code true} if the specified subsection contains the specified key, {@code false} otherwise.
+     * @throws NullPointerException if {@code subsection} is {@code null}
+     * @throws IllegalArgumentException if {@code subsection} is invalid
      */
     public boolean isKey(String subsection, String key) {
+        validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
         IniConf currentDict = this;
         String[] sectionPath = subsection.split("\\.");
         for (String section : sectionPath) {
@@ -165,8 +198,11 @@ public class IniConf {
      * Checks whether this IniConf contains a subsection with the specified name.
      * @param sectionName section name to be checked
      * @return {@code true} if this IniConf has a subsection with the specified name, {@code false} otherwise.
+     * @throws NullPointerException if {@code sectionName} is {@code null}
+     * @throws IllegalArgumentException if {@code sectionName} is invalid
      */
     public boolean isSection(String sectionName) {
+        validateAgainstPattern(SECTION_NAME_PATTERN, sectionName);
         IniConf currentDict = this;
         String[] sectionPath = sectionName.split("\\.");
         for (String section : sectionPath) {
@@ -184,8 +220,11 @@ public class IniConf {
      * @param name the name of subsection to be returned
      * @return subsection associated with the specified subsection name, or {@code null}
      * if no such subsection exists
+     * @throws NullPointerException if {@code name} is {@code null}
+     * @throws IllegalArgumentException if {@code name} is invalid
      */
     public IniConf getSection(String name) {
+        validateAgainstPattern(SECTION_NAME_PATTERN, name);
         IniConf currentDict = this;
         String[] sectionPath = name.split("\\.");
         for (String section : sectionPath) {
@@ -212,20 +251,17 @@ public class IniConf {
      * @param section the subsection to be associated with the specified name
      * @return the subsection previously associated with the specified name, or {@code null} if there was no such
      * subsection.
-     * @throws NullPointerException if {@code section} is {@code null}
-     * @throws IllegalArgumentException if adding {@code section} would reuse an existing section or create an
-     * irregular section graph
+     * @throws NullPointerException if {@code name} or {@code section} is {@code null}
+     * @throws IllegalArgumentException if {@code name} is invalid, or if adding {@code section} would reuse an
+     * existing section or create an irregular section graph
      */
     public IniConf addSection(String name, IniConf section) {
         Objects.requireNonNull(section, "section must not be null");
+        validateAgainstPattern(SECTION_NAME_PATTERN, name);
         if (section == this) {
             throw new IllegalArgumentException("addSection(): a section cannot contain itself.");
         }
         ensureDisjointRegularGraphs(section);
-        Matcher sectionMatcher = SECTION_NAME_PATTERN.matcher(name);
-        if (!sectionMatcher.find()) {
-            throw new IllegalArgumentException("addSection(): section name contains illegal characters.");
-        }
         IniConf currentDict = this;
         String[] sectionPath = name.split("\\.");
         for (int i = 0; i < sectionPath.length - 1; i++) {
@@ -367,7 +403,8 @@ public class IniConf {
         IniConf currentDict = this;
         String currentSection;
 
-        for (String line: lines) {
+        for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            String line = lines[lineIndex];
             Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
             Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
             Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
@@ -385,6 +422,9 @@ public class IniConf {
                     }
                     currentDict = currentDict.getChild(section);
                 }
+            } else if (line.stripLeading().startsWith("[")) {
+                throw new IllegalArgumentException(
+                        "Invalid section header at line " + (lineIndex + 1) + ": " + line);
             }
             if (propertyMatcher.find()) {
                 // add new property to the current IniConf object

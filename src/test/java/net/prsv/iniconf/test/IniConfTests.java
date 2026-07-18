@@ -3,6 +3,8 @@ package net.prsv.iniconf.test;
 import net.prsv.iniconf.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -36,6 +38,85 @@ public class IniConfTests {
     @Test
     void constructorWithInputTest() {
         assertFalse(testObject.isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "[section.]",
+            "[.section]",
+            "[section..subsection]",
+            "[section name]",
+            "[section"
+    })
+    void constructorRejectsInvalidSectionHeader(String header) {
+        String input = "[valid]\nkey = value\n" + header + "\nother = value";
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new IniConf(input));
+
+        assertTrue(exception.getMessage().contains("line 3"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "section",
+            "section_1.subsection2",
+            "level1.level2.level3"
+    })
+    void sectionPathMethodsAcceptValidPaths(String path) {
+        IniConf iniConf = new IniConf();
+
+        assertDoesNotThrow(() -> iniConf.put(path, "key", "value"));
+        assertEquals("value", iniConf.get(path, "key"));
+        assertEquals("value", iniConf.getOrDefault(path, "key", "default"));
+        assertTrue(iniConf.isKey(path, "key"));
+        assertTrue(iniConf.isSection(path));
+        assertNotNull(iniConf.getSection(path));
+
+        IniConf sectionContainer = new IniConf();
+        assertDoesNotThrow(() -> sectionContainer.addSection(path, new IniConf()));
+        assertTrue(sectionContainer.isSection(path));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "",
+            ".section",
+            "section.",
+            "section..subsection",
+            "section name",
+            "section/subsection"
+    })
+    void sectionPathMethodsRejectInvalidPaths(String path) {
+        IniConf iniConf = new IniConf();
+
+        assertAll(
+                () -> assertThrows(IllegalArgumentException.class, () -> iniConf.put(path, "key", "value")),
+                () -> assertThrows(IllegalArgumentException.class, () -> iniConf.get(path, "key")),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> iniConf.getOrDefault(path, "key", "default")),
+                () -> assertThrows(IllegalArgumentException.class, () -> iniConf.isKey(path, "key")),
+                () -> assertThrows(IllegalArgumentException.class, () -> iniConf.isSection(path)),
+                () -> assertThrows(IllegalArgumentException.class, () -> iniConf.getSection(path)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> iniConf.addSection(path, new IniConf()))
+        );
+    }
+
+    @Test
+    void sectionPathMethodsRejectNullPaths() {
+        IniConf iniConf = new IniConf();
+
+        assertAll(
+                () -> assertThrows(NullPointerException.class, () -> iniConf.put(null, "key", "value")),
+                () -> assertThrows(NullPointerException.class, () -> iniConf.get(null, "key")),
+                () -> assertThrows(NullPointerException.class,
+                        () -> iniConf.getOrDefault(null, "key", "default")),
+                () -> assertThrows(NullPointerException.class, () -> iniConf.isKey(null, "key")),
+                () -> assertThrows(NullPointerException.class, () -> iniConf.isSection(null)),
+                () -> assertThrows(NullPointerException.class, () -> iniConf.getSection(null)),
+                () -> assertThrows(NullPointerException.class,
+                        () -> iniConf.addSection(null, new IniConf()))
+        );
     }
 
     @Test
