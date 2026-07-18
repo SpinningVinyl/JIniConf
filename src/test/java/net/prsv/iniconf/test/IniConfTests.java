@@ -199,6 +199,62 @@ public class IniConfTests {
     }
 
     @Test
+    void putStoresKeysInLowercase() {
+        IniConf iniConf = new IniConf();
+
+        assertNull(iniConf.put("Mixed_CASE_Key", "first"));
+        assertEquals("first", iniConf.get("mixed_case_key"));
+        assertFalse(iniConf.getProperties().containsKey("Mixed_CASE_Key"));
+        assertEquals("first", iniConf.put("MIXED_CASE_KEY", "replacement"));
+        assertEquals("replacement", iniConf.get("mixed_case_key"));
+        assertEquals(1, iniConf.getProperties().size());
+    }
+
+    @Test
+    void sectionInsertionStoresNamesInLowercase() {
+        IniConf iniConf = new IniConf();
+
+        iniConf.put("Parent.Child", "Mixed_Key", "value");
+
+        assertTrue(iniConf.isSection("parent.child"));
+        assertEquals("value", iniConf.get("parent.child", "mixed_key"));
+        assertFalse(iniConf.getSections().containsKey("Parent"));
+
+        IniConf first = new IniConf();
+        IniConf replacement = new IniConf();
+        assertNull(iniConf.addSection("Other.Section", first));
+        assertSame(first, iniConf.addSection("OTHER.SECTION", replacement));
+        assertSame(replacement, iniConf.getSection("other.section"));
+    }
+
+    @Test
+    void keyAndSectionQueriesAreCaseInsensitive() {
+        IniConf iniConf = new IniConf();
+        iniConf.put("Root_Key", "root value");
+        iniConf.put("Parent.Child", "Mixed_Key", "nested value");
+
+        assertAll(
+                () -> assertEquals("root value", iniConf.get("ROOT_KEY")),
+                () -> assertEquals("root value", iniConf.getOrDefault("ROOT_KEY", "default")),
+                () -> assertTrue(iniConf.isKey("ROOT_KEY")),
+                () -> assertEquals("nested value", iniConf.get("PARENT.CHILD", "MIXED_KEY")),
+                () -> assertEquals("nested value",
+                        iniConf.getOrDefault("PARENT.CHILD", "MIXED_KEY", "default")),
+                () -> assertTrue(iniConf.isKey("PARENT.CHILD", "MIXED_KEY")),
+                () -> assertTrue(iniConf.isSection("PARENT.CHILD")),
+                () -> assertNotNull(iniConf.getSection("PARENT.CHILD"))
+        );
+    }
+
+    @Test
+    void mixedCaseProgrammaticConfigurationRoundTripsInLowercase() {
+        IniConf original = new IniConf();
+        original.put("Parent.Child", "Mixed_Key", "value");
+
+        assertEquals(original, new IniConf(original.toString()));
+    }
+
+    @Test
     void putNormalizesValues() {
         IniConf iniConf = new IniConf();
 
@@ -271,7 +327,8 @@ public class IniConfTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"", "simple", "users'", "internal spaces", "double \"quotes\"",
-            "C:\\directory\\file", "C:\\directory\\\"quoted\" file"})
+            "C:\\directory\\file", "C:\\directory\\\"quoted\" file", "日本語",
+            "Zażółć gęślą jaźń — 日本語 😀"})
     void serializedValuesRoundTrip(String value) {
         IniConf original = new IniConf();
         original.put("key", value);
