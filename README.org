@@ -1,148 +1,175 @@
 * JIniConf
-This is a small library for working with =.INI= (or =.conf=) configuration files in Java.
 
-It is intentionally designed to be as simple as possible. For example, it stores all values as simple strings, meaning that it is the responsibility of the client application to convert them to whatever format is required.
+JIniConf is a small Java 17 library for reading, modifying, and writing =.ini= and =.conf= files.
 
-Despite its simplicity, it supports nested sections, which are stored as nested ~IniConf~ objects.
+All property values are stored as Java strings. Nested sections are represented by nested ~IniConf~ objects.
 
-** Reading and parsing .INI files
-Let's suppose we have the following =.INI= file which is named =sample.ini=:
+** Supported format
 
-#+begin_src
-; This is a comment
-# This is also a comment
-ns_key1 = ns_value1
-ns_key2 = ns_value2
+Property keys and each component of a section path must contain one or more ASCII word characters: letters, digits,
+or underscores. Section path components are separated by dots.
 
-[section1]
-key1 = value1
-key2 = value2
+#+begin_src ini
+root_key = value
 
-[section2]
-# This is a comment on its own line
-key3 = value3
-key4 = value4
+[server]
+host_name = localhost
 
-[section3]
-key5 = value5
-key6 = "this is value 6"
-
-[section3.subsection1]
-key = value
-
-[section3.subsection1.subsubsection1]
-key8 = value8
-
-[section3.subsection1.subsubsection2]
-key9 = value9
-
-[section3.subsection2]
-key = value
-
-[section3.subsection2.subsubsection1]
-key = value
+[server.http]
+port = 8080
 #+end_src
 
-To load the file, use the ~IniConfReader~ class:
+Keys and section names are converted to lowercase using ~Locale.ROOT~ before storage. Query arguments are normalized
+in the same way, so key and section lookup is case-insensitive.
+
+#+begin_src java
+iniConf.put("Server.HTTP", "Host_Name", "localhost");
+String host = iniConf.get("SERVER.HTTP", "HOST_NAME");
+#+end_src
+
+Lines beginning with ~;~ or ~#~ are comments. Blank and otherwise unrecognized lines are ignored. Invalid section
+headers and malformed quoted or escaped property values cause an ~IllegalArgumentException~ containing the input line
+number. Other invalid values, such as values containing NUL, also cause an ~IllegalArgumentException~.
+
+*** Value rules
+
+Values must not be ~null~ and must not contain NUL or line-terminator characters. Leading and trailing whitespace is
+removed with ~String.strip()~ before a value is stored. Internal whitespace is preserved. A value containing only
+whitespace therefore becomes an empty string.
+
+The serializer uses the following canonical representation:
+
+- Simple values are written without quotes.
+- Empty strings are written as ~""~.
+- Values containing whitespace, a double quote, or a backslash are enclosed in double quotes.
+- Within a quoted value, ~"~ is encoded as ~\"~ and ~\~ is encoded as ~\\~.
+- Single quotes are ordinary value characters.
+
+#+begin_src ini
+simple = value
+empty = ""
+message = "He said \"hello\""
+path = "C:\\config\\application.ini"
+#+end_src
+
+When parsing quoted values, only ~\"~ and ~\\~ are accepted escape sequences. Unknown or incomplete escape sequences,
+unescaped double quotes, and unquoted backslashes are rejected.
+
+** Reading and parsing files
+
+~IniConfReader~ reads files as UTF-8. A leading UTF-8 byte-order mark is removed before parsing.
 
 #+begin_src java
 Optional<IniConf> result = IniConfReader.read("sample.ini");
 if (result.isPresent()) {
     IniConf iniConf = result.get();
-    // do stuff
+    // use the configuration
 }
 #+end_src
 
-~IniConfReader~ decodes files as UTF-8. Its ~read()~ method returns ~Optional.empty()~ if an I/O error occurs while
-reading the file, including when the file does not contain valid UTF-8.
+~IniConfReader.read()~ returns ~Optional.empty()~ when an I/O error occurs, the file is missing, or the input is not
+valid UTF-8. Invalid INI content causes an ~IllegalArgumentException~.
 
-Alternatively, you could write your own code to load the contents of the file into a string. In this case, to create a new ~IniConf~ object from the string do the following:
+An already-loaded Java string can be parsed directly:
 
 #+begin_src java
 IniConf iniConf = new IniConf(input);
 #+end_src
 
-To check if the newly created ~IniConf~ object is empty, use the ~isEmpty()~ method.
+The direct constructor operates on Unicode Java character data and therefore performs no byte decoding or BOM
+handling.
 
-The ~isKey()~ method is used to check whether the property exists. The ~get()~ method is used to get the value associated with the given key:
+** Querying configurations
+
+Use ~isEmpty()~ to check whether a configuration contains any properties or sections.
+
+Use ~isKey()~, ~get()~, and ~getOrDefault()~ for root properties:
 
 #+begin_src java
-String value;
-if (iniConf.isKey("ns_key1")) {
-    value = iniConf.get("ns_key1");
+if (iniConf.isKey("root_key")) {
+    String value = iniConf.get("root_key");
+}
+
+String value = iniConf.getOrDefault("missing_key", "default_value");
+#+end_src
+
+The overloads accepting a section path query nested properties:
+
+#+begin_src java
+if (iniConf.isKey("server.http", "port")) {
+    String port = iniConf.get("server.http", "port");
+}
+
+String port = iniConf.getOrDefault("server.http", "port", "8080");
+#+end_src
+
+Use ~isSection()~ and ~getSection()~ to query whole sections:
+
+#+begin_src java
+IniConf httpSection = null;
+if (iniConf.isSection("server.http")) {
+    httpSection = iniConf.getSection("server.http");
 }
 #+end_src
 
-Or the same thing, but for a property in one of the nested sections:
-
-#+begin_src java
-String value;
-if (iniConf.isKey("section3.subsection1.subsubsection1", "key8")) {
-    value = iniConf.get("section3.subsection1.subsubsection1", "key8");
-}
-#+end_src
-
-There is also a convenience method called ~getOrDefault()~ which returns the value associated with the given key is such a value exist, or the default value otherwise:
-
-#+begin_src java
-String value = iniConf.getOrDefault("section3.subsection1.subsubsection1", "key11", "default_value");
-#+end_src
-
-To get a whole section as an ~IniConf~ object:
-
-#+begin_src java
-IniConf section;
-if (iniConf.isSection("section3.subsection1.subsubsection1")) {
-    section = iniConf.getSection("section3.subsection1.subsusbsection1");
-}
-#+end_src
-
-It is possible to get all properties stored in an ~IniConf~ object as an unmodifiable map:
+~getProperties()~ and ~getSections()~ return unmodifiable map views:
 
 #+begin_src java
 Map<String, String> properties = iniConf.getProperties();
-#+end_src
-
-You can also get all sections as an unmodifiable map:
-
-#+begin_src java
 Map<String, IniConf> sections = iniConf.getSections();
 #+end_src
 
-** Creating and modifiying IniConf objects
+** Creating and modifying configurations
 
-Create a new ~IniConf~ object:
+Create an empty configuration:
 
 #+begin_src java
 IniConf iniConf = new IniConf();
 #+end_src
 
-Add properties:
+Add root and nested properties with ~put()~:
 
 #+begin_src java
 iniConf.put("key", "value");
 iniConf.put("section.subsection", "key", "value");
 #+end_src
 
-Add sections:
+The nested overload creates missing sections before inserting the property. Section creation and property insertion
+are separate operations: if the key or value is invalid, sections created while resolving the path remain.
+
+Add or replace a section by supplying its ~IniConf~ object:
 
 #+begin_src java
-iniConf.addSection("section1");
-iniConf.addSection("section2");
-iniConf.addSection("level1.level2.level3");
+iniConf.addSection("section1", new IniConf());
+iniConf.addSection("level1.level2.level3", new IniConf());
 #+end_src
 
-Get a ~String~ representation of an ~IniConf~ object which can be saved to an =.INI= file:
+Section objects cannot be ~null~, reused within the same configuration graph, or added in a way that creates a cycle
+or repeated section identity.
+
+** Serializing and writing files
+
+~toString()~ returns the INI representation of a configuration:
 
 #+begin_src java
 String iniString = iniConf.toString();
 #+end_src
 
-Or use ~IniConfWriter~ to save a UTF-8 encoded =.INI= file:
+The relative order of properties and sections is unspecified. Parsing serialized output reconstructs the same
+configuration within the supported identifier and value contract.
+
+~IniConfWriter~ writes the serialized representation as UTF-8 without a byte-order mark:
 
 #+begin_src java
-IniConfWriter.write("sample.ini", iniConf);
+boolean written = IniConfWriter.write("sample.ini", iniConf);
+if (!written) {
+    // handle the I/O failure
+}
 #+end_src
 
+The method returns ~false~ if an I/O error occurs and throws ~NullPointerException~ if the filename or configuration
+is ~null~.
+
 ** License
-This code is licensed under the terms of the MIT license. See LICENSE.txt for details.
+
+This project is licensed under the MIT License. See =LICENSE.txt= for details.
