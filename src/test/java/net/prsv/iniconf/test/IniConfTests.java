@@ -199,6 +199,111 @@ public class IniConfTests {
     }
 
     @Test
+    void putNormalizesValues() {
+        IniConf iniConf = new IniConf();
+
+        assertNull(iniConf.put("key", "  value with internal spaces  "));
+        assertEquals("value with internal spaces", iniConf.get("key"));
+        assertEquals("value with internal spaces", iniConf.put("key", "\t\u2003replacement\u2003 "));
+        assertEquals("replacement", iniConf.get("key"));
+        assertNull(iniConf.put("empty", " \t\u2003 "));
+        assertEquals("", iniConf.get("empty"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"value\nnext", "value\rnext", "value\u000Bnext", "value\u000Cnext",
+            "value\u0085next", "value\u2028next", "value\u2029next", "value\u0000next"})
+    void putRejectsInvalidValues(String value) {
+        IniConf iniConf = new IniConf();
+
+        assertThrows(IllegalArgumentException.class, () -> iniConf.put("key", value));
+        assertFalse(iniConf.isKey("key"));
+    }
+
+    @Test
+    void putRejectsNullValue() {
+        IniConf iniConf = new IniConf();
+
+        assertThrows(NullPointerException.class, () -> iniConf.put("key", null));
+        assertFalse(iniConf.isKey("key"));
+    }
+
+    @Test
+    void parserUsesPutValueNormalizationAndValidation() {
+        IniConf iniConf = new IniConf("key =   value with spaces   ");
+
+        assertEquals("value with spaces", iniConf.get("key"));
+        assertThrows(IllegalArgumentException.class, () -> new IniConf("key = value\u0000"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"value", "value-123", "it's"})
+    void serializerWritesSimpleValuesWithoutQuotes(String value) {
+        IniConf iniConf = new IniConf();
+        iniConf.put("key", value);
+
+        assertEquals("key = " + value + "\n\n", iniConf.toString());
+    }
+
+    @Test
+    void serializerQuotesEmptyValues() {
+        IniConf iniConf = new IniConf();
+        iniConf.put("key", "");
+
+        assertEquals("key = \"\"\n\n", iniConf.toString());
+    }
+
+    @Test
+    void serializerQuotesValuesContainingInternalWhitespace() {
+        IniConf iniConf = new IniConf();
+        iniConf.put("key", "value with\tinternal whitespace");
+
+        assertEquals("key = \"value with\tinternal whitespace\"\n\n", iniConf.toString());
+    }
+
+    @Test
+    void serializerEncodesDoubleQuotesAndBackslashes() {
+        IniConf iniConf = new IniConf();
+        iniConf.put("key", "C:\\directory\\\"quoted\"");
+
+        assertEquals("key = \"C:\\\\directory\\\\\\\"quoted\\\"\"\n\n", iniConf.toString());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "simple", "users'", "internal spaces", "double \"quotes\"",
+            "C:\\directory\\file", "C:\\directory\\\"quoted\" file"})
+    void serializedValuesRoundTrip(String value) {
+        IniConf original = new IniConf();
+        original.put("key", value);
+
+        IniConf parsed = new IniConf(original.toString());
+
+        assertEquals(original, parsed);
+    }
+
+    @Test
+    void parserDecodesQuotedValues() {
+        IniConf iniConf = new IniConf("key = \"C:\\\\directory\\\\\\\"quoted\\\"\"");
+
+        assertEquals("C:\\directory\\\"quoted\"", iniConf.get("key"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "key = \"missing closing quote",
+            "key = \"unknown \\q escape\"",
+            "key = \"incomplete escape\\",
+            "key = \"value\" trailing",
+            "key = unquoted\\backslash",
+            "key = unquoted\"quote"
+    })
+    void parserRejectsInvalidEncodedValues(String input) {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new IniConf(input));
+
+        assertTrue(exception.getMessage().contains("line 1"));
+    }
+
+    @Test
     void addSectionTest() {
         String testSection = "section.subsection.subsubsection";
         String illegalTestSection1 = "section/subsection";
