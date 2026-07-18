@@ -129,6 +129,7 @@ public class IniConfTests {
         assertThrows(IllegalArgumentException.class, () -> testObject4.addSection(illegalTestSection1, new IniConf()));
         assertThrows(IllegalArgumentException.class, () -> testObject4.addSection(illegalTestSection2, new IniConf()));
         assertThrows(IllegalArgumentException.class, () -> testObject4.addSection(illegalTestSection3, new IniConf()));
+        assertThrows(NullPointerException.class, () -> testObject4.addSection("section", null));
     }
 
     @Test

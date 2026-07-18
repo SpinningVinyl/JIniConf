@@ -3,6 +3,7 @@ package net.prsv.iniconf;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -207,8 +208,10 @@ public class IniConf {
      * @param section the subsection to be associated with the specified name
      * @return the subsection previously associated with the specified name, or {@code null} if there was no such
      * subsection.
+     * @throws NullPointerException if {@code section} is {@code null}
      */
     public IniConf addSection(String name, IniConf section) {
+        Objects.requireNonNull(section, "section must not be null");
         Matcher sectionMatcher = SECTION_NAME_PATTERN.matcher(name);
         if (!sectionMatcher.find()) {
             throw new IllegalArgumentException("addSection(): section name contains illegal characters.");
