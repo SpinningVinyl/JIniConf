@@ -86,6 +86,9 @@ Use ~isEmpty()~ to check whether a configuration contains any properties or sect
 
 Use ~isKey()~, ~get()~, and ~getOrDefault()~ for root properties:
 
+The key-oriented API is modeled on Java's ~Map~ interface. This implementation does not permit ~null~ keys, so its
+query methods throw ~NullPointerException~ when supplied with one.
+
 #+begin_src java
 if (iniConf.isKey("root_key")) {
     String value = iniConf.get("root_key");

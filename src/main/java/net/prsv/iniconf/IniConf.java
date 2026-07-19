@@ -144,8 +144,12 @@ public final class IniConf {
      * Returns the value associated with the specified key, or {@code null} if no such value exists.
      * @param key the key whose associated value is to be returned
      * @return value associated with the specified key, or {@code null} if no such value exists
+     * @throws NullPointerException if {@code key} is {@code null}
      */
     public String get(String key) {
+        if (key == null) {
+            throw new NullPointerException("get(): key cannot be null");
+        }
         return properties.get(normalizeIdentifier(key));
     }
 
@@ -155,10 +159,13 @@ public final class IniConf {
      * @param subsection path of the subsection containing the key
      * @param key the key whose associated value is to be returned
      * @return the value associated with the specified key, or {@code null} if no such value exists
-     * @throws NullPointerException if {@code subsection} is {@code null}
+     * @throws NullPointerException if {@code subsection} or {@code key} is {@code null}
      * @throws IllegalArgumentException if {@code subsection} is invalid
      */
     public String get(String subsection, String key) {
+        if (key == null) {
+            throw new NullPointerException("get(): key cannot be null");
+        }
         List<String> sectionPath = normalizeSectionPath(subsection);
         IniConf section = resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.RETURN_NULL);
         return section == null ? null : section.get(key);
@@ -170,6 +177,7 @@ public final class IniConf {
      * @param key the key whose associated values is to be returned
      * @param defaultValue the default value to be returned if there is no value associated with the specified key
      * @return the value to which the specified key is mapped, or {@code defaultValue} if this IniConf object contains no mapping for the key
+     * @throws NullPointerException if {@code key} is {@code null}
      */
     public String getOrDefault(String key, String defaultValue) {
         return properties.getOrDefault(normalizeIdentifier(key), defaultValue);
@@ -183,10 +191,13 @@ public final class IniConf {
      * @param defaultValue the default value to be returned if there is no value associated with the specified key
      * @return the value to which the specified key in the specified section is mapped, or
      * {@code defaultValue} if no such value exists
-     * @throws NullPointerException if {@code subsection} is {@code null}
+     * @throws NullPointerException if {@code subsection} or {@code key} is {@code null}
      * @throws IllegalArgumentException if {@code subsection} is invalid
      */
     public String getOrDefault(String subsection, String key, String defaultValue) {
+        if (key == null) {
+            throw new NullPointerException("getOrDefault(): key cannot be null");
+        }
         List<String> sectionPath = normalizeSectionPath(subsection);
         IniConf section = resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.RETURN_NULL);
         return section == null ? defaultValue : section.getOrDefault(key, defaultValue);
@@ -196,6 +207,7 @@ public final class IniConf {
      * Checks whether the IniConf contains the specified key.
      * @param key the key to be checked
      * @return {@code true} if the IniConf contains the specified key, {@code false} otherwise.
+     * @throws NullPointerException if {@code key} is {@code null}
      */
     public boolean isKey(String key) {
         return properties.containsKey(normalizeIdentifier(key));
@@ -205,10 +217,13 @@ public final class IniConf {
      * @param key the key to be checked in the specified subsection
      * @param subsection the subsection to be checked for the specified key
      * @return {@code true} if the specified subsection contains the specified key, {@code false} otherwise.
-     * @throws NullPointerException if {@code subsection} is {@code null}
+     * @throws NullPointerException if {@code subsection} or {@code key} is {@code null}
      * @throws IllegalArgumentException if {@code subsection} is invalid
      */
     public boolean isKey(String subsection, String key) {
+        if (key == null) {
+            throw new NullPointerException("isKey(): key cannot be null");
+        }
         List<String> sectionPath = normalizeSectionPath(subsection);
         IniConf section = resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.RETURN_NULL);
         return section != null && section.isKey(key);
