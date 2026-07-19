@@ -119,6 +119,27 @@ public class IniConfTests {
         assertTrue(iniConf.isEmpty());
     }
 
+    @Test
+    void keyQueriesRejectNullKeysRegardlessOfSectionExistence() {
+        IniConf iniConf = new IniConf();
+        iniConf.put("existing", "key", "value");
+
+        assertAll(
+                () -> assertThrows(NullPointerException.class, () -> iniConf.get((String) null)),
+                () -> assertThrows(NullPointerException.class,
+                        () -> iniConf.getOrDefault(null, "default")),
+                () -> assertThrows(NullPointerException.class, () -> iniConf.isKey((String) null)),
+                () -> assertThrows(NullPointerException.class, () -> iniConf.get("existing", null)),
+                () -> assertThrows(NullPointerException.class,
+                        () -> iniConf.getOrDefault("existing", null, "default")),
+                () -> assertThrows(NullPointerException.class, () -> iniConf.isKey("existing", null)),
+                () -> assertThrows(NullPointerException.class, () -> iniConf.get("missing", null)),
+                () -> assertThrows(NullPointerException.class,
+                        () -> iniConf.getOrDefault("missing", null, "default")),
+                () -> assertThrows(NullPointerException.class, () -> iniConf.isKey("missing", null))
+        );
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
             "",
