@@ -27,14 +27,6 @@ public final class IniConf {
         CREATE
     }
 
-    private static final String SECTION_PATH_REGEX = "\\w+(?:\\.\\w+)*";
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("^\\s*[;#].*$");
-    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(" + SECTION_PATH_REGEX + ")]\\s*$");
-    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w+)\\s*=\\s*(.*?)\\s*$");
-    private static final Pattern KEY_PATTERN = Pattern.compile("^\\w+$");
-    private static final Pattern SECTION_NAME_PATTERN = Pattern.compile("^" + SECTION_PATH_REGEX + "$");
-    private static final Pattern LINE_TERMINATOR_PATTERN = Pattern.compile("\\R");
-
     private final Map<String, String> properties;
     private final Map<String, IniConf> subsections;
 
@@ -77,7 +69,7 @@ public final class IniConf {
      *                                  the NUL character
      */
     public String put(String key, String value) {
-        validateAgainstPattern(KEY_PATTERN, key);
+        validateAgainstPattern(IniConfPatterns.KEY_PATTERN, key);
         return properties.put(normalizeIdentifier(key), normalizeValue(value));
     }
 
@@ -112,7 +104,7 @@ public final class IniConf {
 
     private static String normalizeValue(String value) {
         Objects.requireNonNull(value, "value must not be null");
-        if (LINE_TERMINATOR_PATTERN.matcher(value).find()) {
+        if (IniConfPatterns.LINE_TERMINATOR_PATTERN.matcher(value).find()) {
             throw new IllegalArgumentException("value must not contain line terminators");
         }
         if (value.indexOf('\0') >= 0) {
@@ -126,8 +118,8 @@ public final class IniConf {
     }
 
     private static List<String> normalizeSectionPath(String path) {
-        validateAgainstPattern(SECTION_NAME_PATTERN, path);
-        return List.of(normalizeIdentifier(path).split("\\."));
+        validateAgainstPattern(IniConfPatterns.SECTION_NAME_PATTERN, path);
+        return List.of(IniConfPatterns.SECTION_PATH_SEPARATOR_PATTERN.split(normalizeIdentifier(path)));
     }
 
     private IniConf resolveSection(List<String> path, int componentCount, MissingSectionPolicy policy) {
@@ -449,15 +441,15 @@ public final class IniConf {
     }
 
     private void parse(String input) {
-        String[] lines = input.split("\\R");
+        String[] lines = IniConfPatterns.LINE_TERMINATOR_PATTERN.split(input);
         IniConf currentDict = this;
 
         for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             String line = lines[lineIndex];
             int lineNumber = lineIndex + 1;
-            Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
-            Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
-            Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
+            Matcher commentMatcher = IniConfPatterns.COMMENT_PATTERN.matcher(line);
+            Matcher sectionMatcher = IniConfPatterns.SECTION_PATTERN.matcher(line);
+            Matcher propertyMatcher = IniConfPatterns.PROPERTY_PATTERN.matcher(line);
             if (line.isBlank() || commentMatcher.matches()) {
                 continue; // comment -- skip the line
             }
