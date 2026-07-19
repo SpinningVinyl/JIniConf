@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -20,6 +21,11 @@ import java.util.regex.Pattern;
  * query arguments are normalized in the same way.
  */
 public final class IniConf {
+
+    private enum MissingSectionPolicy {
+        RETURN_NULL,
+        CREATE
+    }
 
     private static final String SECTION_PATH_REGEX = "\\w+(?:\\.\\w+)*";
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^\\s*[;#].*$");
@@ -92,16 +98,9 @@ public final class IniConf {
      *                                  a line terminator or the NUL character
      */
     public String put(String subsection, String key, String value) {
-        validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
-        IniConf currentDict = this;
-        String[] sectionPath = normalizeIdentifier(subsection).split("\\.");
-        for (String section : sectionPath) {
-            if (currentDict.getChild(section) == null) {
-                currentDict.addChild(section, new IniConf());
-            }
-            currentDict = currentDict.getChild(section);
-        }
-        return currentDict.put(key, value);
+        List<String> sectionPath = normalizeSectionPath(subsection);
+        IniConf section = resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.CREATE);
+        return section.put(key, value);
     }
 
     private static void validateAgainstPattern(Pattern pattern, String str) {
@@ -126,6 +125,28 @@ public final class IniConf {
         return identifier.toLowerCase(Locale.ROOT);
     }
 
+    private static List<String> normalizeSectionPath(String path) {
+        validateAgainstPattern(SECTION_NAME_PATTERN, path);
+        return List.of(normalizeIdentifier(path).split("\\."));
+    }
+
+    private IniConf resolveSection(List<String> path, int componentCount, MissingSectionPolicy policy) {
+        IniConf current = this;
+        for (int index = 0; index < componentCount; index++) {
+            String name = path.get(index);
+            IniConf child = current.getChild(name);
+            if (child == null) {
+                if (policy == MissingSectionPolicy.RETURN_NULL) {
+                    return null;
+                }
+                child = new IniConf();
+                current.addChild(name, child);
+            }
+            current = child;
+        }
+        return current;
+    }
+
     /**
      * Returns the value associated with the specified key, or {@code null} if no such value exists.
      * @param key the key whose associated value is to be returned
@@ -145,16 +166,9 @@ public final class IniConf {
      * @throws IllegalArgumentException if {@code subsection} is invalid
      */
     public String get(String subsection, String key) {
-        validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
-        IniConf currentDict = this;
-        String[] sectionPath = normalizeIdentifier(subsection).split("\\.");
-        for (String section : sectionPath) {
-            if (currentDict.getChild(section) == null) {
-                return null;
-            }
-            currentDict = currentDict.getChild(section);
-        }
-        return currentDict.get(key);
+        List<String> sectionPath = normalizeSectionPath(subsection);
+        IniConf section = resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.RETURN_NULL);
+        return section == null ? null : section.get(key);
     }
 
     /**
@@ -180,16 +194,9 @@ public final class IniConf {
      * @throws IllegalArgumentException if {@code subsection} is invalid
      */
     public String getOrDefault(String subsection, String key, String defaultValue) {
-        validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
-        IniConf currentDict = this;
-        String[] sectionPath = normalizeIdentifier(subsection).split("\\.");
-        for (String section : sectionPath) {
-            if (currentDict.getChild(section) == null) {
-                return defaultValue;
-            }
-            currentDict = currentDict.getChild(section);
-        }
-        return currentDict.getOrDefault(key, defaultValue);
+        List<String> sectionPath = normalizeSectionPath(subsection);
+        IniConf section = resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.RETURN_NULL);
+        return section == null ? defaultValue : section.getOrDefault(key, defaultValue);
     }
 
     /**
@@ -209,16 +216,9 @@ public final class IniConf {
      * @throws IllegalArgumentException if {@code subsection} is invalid
      */
     public boolean isKey(String subsection, String key) {
-        validateAgainstPattern(SECTION_NAME_PATTERN, subsection);
-        IniConf currentDict = this;
-        String[] sectionPath = normalizeIdentifier(subsection).split("\\.");
-        for (String section : sectionPath) {
-            if (currentDict.getChild(section) == null) {
-                return false;
-            }
-            currentDict = currentDict.getChild(section);
-        }
-        return currentDict.isKey(key);
+        List<String> sectionPath = normalizeSectionPath(subsection);
+        IniConf section = resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.RETURN_NULL);
+        return section != null && section.isKey(key);
     }
 
     /**
@@ -229,16 +229,8 @@ public final class IniConf {
      * @throws IllegalArgumentException if {@code sectionName} is invalid
      */
     public boolean isSection(String sectionName) {
-        validateAgainstPattern(SECTION_NAME_PATTERN, sectionName);
-        IniConf currentDict = this;
-        String[] sectionPath = normalizeIdentifier(sectionName).split("\\.");
-        for (String section : sectionPath) {
-            if (currentDict.getChild(section) == null) {
-                return false;
-            }
-            currentDict = currentDict.getChild(section);
-        }
-        return true;
+        List<String> sectionPath = normalizeSectionPath(sectionName);
+        return resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.RETURN_NULL) != null;
     }
 
     /**
@@ -251,16 +243,8 @@ public final class IniConf {
      * @throws IllegalArgumentException if {@code name} is invalid
      */
     public IniConf getSection(String name) {
-        validateAgainstPattern(SECTION_NAME_PATTERN, name);
-        IniConf currentDict = this;
-        String[] sectionPath = normalizeIdentifier(name).split("\\.");
-        for (String section : sectionPath) {
-            if (currentDict.getChild(section) == null) {
-                return null;
-            }
-            currentDict = currentDict.getChild(section);
-        }
-        return currentDict;
+        List<String> sectionPath = normalizeSectionPath(name);
+        return resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.RETURN_NULL);
     }
 
     private IniConf getChild(String name) {
@@ -284,20 +268,14 @@ public final class IniConf {
      */
     public IniConf addSection(String name, IniConf section) {
         Objects.requireNonNull(section, "section must not be null");
-        validateAgainstPattern(SECTION_NAME_PATTERN, name);
+        List<String> sectionPath = normalizeSectionPath(name);
         if (section == this) {
             throw new IllegalArgumentException("addSection(): a section cannot contain itself.");
         }
         ensureDisjointRegularGraphs(this, section);
-        IniConf currentDict = this;
-        String[] sectionPath = normalizeIdentifier(name).split("\\.");
-        for (int i = 0; i < sectionPath.length - 1; i++) {
-            if (currentDict.getChild(sectionPath[i]) == null) {
-                currentDict.addChild(sectionPath[i], new IniConf());
-            }
-            currentDict = currentDict.getChild(sectionPath[i]);
-        }
-        return currentDict.addChild(sectionPath[sectionPath.length - 1], section);
+        IniConf parent = resolveSection(
+                sectionPath, sectionPath.size() - 1, MissingSectionPolicy.CREATE);
+        return parent.addChild(sectionPath.get(sectionPath.size() - 1), section);
     }
 
     private void ensureDisjointRegularGraphs(IniConf root, IniConf section) {
@@ -473,7 +451,6 @@ public final class IniConf {
     private void parse(String input) {
         String[] lines = input.split("\\R");
         IniConf currentDict = this;
-        String currentSection;
 
         for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             String line = lines[lineIndex];
@@ -485,16 +462,9 @@ public final class IniConf {
                 continue; // comment -- skip the line
             }
             if (sectionMatcher.matches()) {
-                currentDict = this;
-                currentSection = normalizeIdentifier(sectionMatcher.group(1));
-                // create new subsections if they don't already exist
-                String[] sectionPath = currentSection.split("\\.");
-                for (String section : sectionPath) {
-                    if (currentDict.getChild(section) == null) {
-                        currentDict.addChild(section, new IniConf());
-                    }
-                    currentDict = currentDict.getChild(section);
-                }
+                List<String> sectionPath = normalizeSectionPath(sectionMatcher.group(1));
+                currentDict = resolveSection(
+                        sectionPath, sectionPath.size(), MissingSectionPolicy.CREATE);
                 continue;
             }
             if (line.stripLeading().startsWith("[")) {

@@ -104,6 +104,21 @@ public class IniConfTests {
         assertTrue(sectionContainer.isSection(path));
     }
 
+    @Test
+    void sectionQueriesDoNotCreateMissingSections() {
+        IniConf iniConf = new IniConf();
+
+        assertAll(
+                () -> assertNull(iniConf.get("missing.section", "key")),
+                () -> assertEquals("default",
+                        iniConf.getOrDefault("missing.section", "key", "default")),
+                () -> assertFalse(iniConf.isKey("missing.section", "key")),
+                () -> assertFalse(iniConf.isSection("missing.section")),
+                () -> assertNull(iniConf.getSection("missing.section"))
+        );
+        assertTrue(iniConf.isEmpty());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
             "",
