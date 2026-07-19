@@ -42,19 +42,19 @@ The serializer uses the following canonical representation:
 
 - Simple values are written without quotes.
 - Empty strings are written as ~""~.
-- Values containing whitespace, a double quote, or a backslash are enclosed in double quotes.
-- Within a quoted value, ~"~ is encoded as ~\"~ and ~\~ is encoded as ~\\~.
+- Values containing whitespace are enclosed in double quotes.
+- In every value, ~"~ is encoded as ~\"~ and ~\~ is encoded as ~\\~.
 - Single quotes are ordinary value characters.
 
 #+begin_src ini
 simple = value
 empty = ""
 message = "He said \"hello\""
-path = "C:\\config\\application.ini"
+path = C:\\config\\application.ini
 #+end_src
 
-When parsing quoted values, only ~\"~ and ~\\~ are accepted escape sequences. Unknown or incomplete escape sequences,
-unescaped double quotes, and unquoted backslashes are rejected.
+When parsing either quoted or unquoted values, only ~\"~ and ~\\~ are accepted escape sequences. Unknown or
+incomplete escape sequences, unescaped double quotes, and unescaped backslashes are rejected.
 
 ** Reading and parsing files
 

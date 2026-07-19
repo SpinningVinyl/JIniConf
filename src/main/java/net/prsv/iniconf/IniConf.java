@@ -10,7 +10,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -26,14 +25,6 @@ public final class IniConf {
         RETURN_NULL,
         CREATE
     }
-
-    private static final String SECTION_PATH_REGEX = "\\w+(?:\\.\\w+)*";
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("^\\s*[;#].*$");
-    private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(" + SECTION_PATH_REGEX + ")]\\s*$");
-    private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w+)\\s*=\\s*(.*?)\\s*$");
-    private static final Pattern KEY_PATTERN = Pattern.compile("^\\w+$");
-    private static final Pattern SECTION_NAME_PATTERN = Pattern.compile("^" + SECTION_PATH_REGEX + "$");
-    private static final Pattern LINE_TERMINATOR_PATTERN = Pattern.compile("\\R");
 
     private final Map<String, String> properties;
     private final Map<String, IniConf> subsections;
@@ -54,7 +45,7 @@ public final class IniConf {
      */
     public IniConf(String input) {
         this();
-        parse(input);
+        IniConfParser.parseInto(input, this);
     }
 
     /**
@@ -77,7 +68,7 @@ public final class IniConf {
      *                                  the NUL character
      */
     public String put(String key, String value) {
-        validateAgainstPattern(KEY_PATTERN, key);
+        validateAgainstPattern(IniConfPatterns.KEY_PATTERN, key);
         return properties.put(normalizeIdentifier(key), normalizeValue(value));
     }
 
@@ -98,21 +89,18 @@ public final class IniConf {
      *                                  a line terminator or the NUL character
      */
     public String put(String subsection, String key, String value) {
-        List<String> sectionPath = normalizeSectionPath(subsection);
-        IniConf section = resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.CREATE);
-        return section.put(key, value);
+        return getOrCreateSection(subsection).put(key, value);
     }
 
     private static void validateAgainstPattern(Pattern pattern, String str) {
-        Matcher matcher = pattern.matcher(str);
-        if (!matcher.matches()) {
+        if (!pattern.matcher(str).matches()) {
             throw new IllegalArgumentException(String.format("String '%s' does not match the provided pattern: '%s'", str, pattern.toString()));
         }
     }
 
     private static String normalizeValue(String value) {
         Objects.requireNonNull(value, "value must not be null");
-        if (LINE_TERMINATOR_PATTERN.matcher(value).find()) {
+        if (IniConfPatterns.LINE_TERMINATOR_PATTERN.matcher(value).find()) {
             throw new IllegalArgumentException("value must not contain line terminators");
         }
         if (value.indexOf('\0') >= 0) {
@@ -126,8 +114,8 @@ public final class IniConf {
     }
 
     private static List<String> normalizeSectionPath(String path) {
-        validateAgainstPattern(SECTION_NAME_PATTERN, path);
-        return List.of(normalizeIdentifier(path).split("\\."));
+        validateAgainstPattern(IniConfPatterns.SECTION_NAME_PATTERN, path);
+        return List.of(IniConfPatterns.SECTION_PATH_SEPARATOR_PATTERN.split(normalizeIdentifier(path)));
     }
 
     private IniConf resolveSection(List<String> path, int componentCount, MissingSectionPolicy policy) {
@@ -145,6 +133,11 @@ public final class IniConf {
             current = child;
         }
         return current;
+    }
+
+    IniConf getOrCreateSection(String path) {
+        List<String> sectionPath = normalizeSectionPath(path);
+        return resolveSection(sectionPath, sectionPath.size(), MissingSectionPolicy.CREATE);
     }
 
     /**
@@ -400,88 +393,9 @@ public final class IniConf {
 
     private static String serializeValue(String value) {
         boolean requiresQuotes = value.isEmpty()
-                || value.indexOf('"') >= 0
-                || value.indexOf('\\') >= 0
                 || value.codePoints().anyMatch(Character::isWhitespace);
-        if (!requiresQuotes) {
-            return value;
-        }
-
         String encodedValue = value.replace("\\", "\\\\").replace("\"", "\\\"");
-        return '"' + encodedValue + '"';
-    }
-
-    private static String deserializeValue(String value, int lineNumber) {
-        if (!value.startsWith("\"")) {
-            if (value.indexOf('"') >= 0 || value.indexOf('\\') >= 0) {
-                throw invalidPropertyValue(lineNumber, "quotes and backslashes must be encoded in a quoted value");
-            }
-            return value;
-        }
-
-        StringBuilder decodedValue = new StringBuilder();
-        for (int index = 1; index < value.length(); index++) {
-            char current = value.charAt(index);
-            if (current == '"') {
-                if (index != value.length() - 1) {
-                    throw invalidPropertyValue(lineNumber, "unexpected characters after closing quote");
-                }
-                return decodedValue.toString();
-            }
-            if (current == '\\') {
-                if (++index == value.length()) {
-                    throw invalidPropertyValue(lineNumber, "incomplete escape sequence");
-                }
-                char escaped = value.charAt(index);
-                if (escaped != '"' && escaped != '\\') {
-                    throw invalidPropertyValue(lineNumber, "unknown escape sequence: \\" + escaped);
-                }
-                decodedValue.append(escaped);
-            } else {
-                decodedValue.append(current);
-            }
-        }
-        throw invalidPropertyValue(lineNumber, "missing closing quote");
-    }
-
-    private static IniConfFormatException invalidPropertyValue(int lineNumber, String reason) {
-        return new IniConfFormatException(lineNumber, "Invalid property value: " + reason);
-    }
-
-    private void parse(String input) {
-        String[] lines = input.split("\\R");
-        IniConf currentDict = this;
-
-        for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            String line = lines[lineIndex];
-            int lineNumber = lineIndex + 1;
-            Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
-            Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
-            Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
-            if (line.isBlank() || commentMatcher.matches()) {
-                continue; // comment -- skip the line
-            }
-            if (sectionMatcher.matches()) {
-                List<String> sectionPath = normalizeSectionPath(sectionMatcher.group(1));
-                currentDict = resolveSection(
-                        sectionPath, sectionPath.size(), MissingSectionPolicy.CREATE);
-                continue;
-            }
-            if (line.stripLeading().startsWith("[")) {
-                throw new IniConfFormatException(lineNumber, "Invalid section header: " + line);
-            }
-            if (propertyMatcher.matches()) {
-                // add new property to the current IniConf object
-                String value = deserializeValue(propertyMatcher.group(2), lineNumber);
-                try {
-                    currentDict.put(propertyMatcher.group(1), value);
-                } catch (IllegalArgumentException exception) {
-                    throw invalidPropertyValue(lineNumber, exception.getMessage());
-                }
-                continue;
-            }
-            throw new IniConfFormatException(lineNumber, "Malformed input: " + line);
-        }
+        return requiresQuotes ? '"' + encodedValue + '"' : encodedValue;
     }
 
 }
