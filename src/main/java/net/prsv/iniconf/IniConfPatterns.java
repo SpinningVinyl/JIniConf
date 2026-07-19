@@ -3,7 +3,7 @@ package net.prsv.iniconf;
 import java.util.regex.Pattern;
 
 /**
- * Regular-expression patterns used by {@link IniConf}.
+ * Regular-expression patterns used by {@link IniConf} and {@link IniConfParser}.
  */
 final class IniConfPatterns {
 

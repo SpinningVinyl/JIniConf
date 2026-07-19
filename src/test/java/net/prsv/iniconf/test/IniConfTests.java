@@ -366,7 +366,7 @@ public class IniConfTests {
         IniConf iniConf = new IniConf();
         iniConf.put("key", "C:\\directory\\\"quoted\"");
 
-        assertEquals("key = \"C:\\\\directory\\\\\\\"quoted\\\"\"\n\n", iniConf.toString());
+        assertEquals("key = C:\\\\directory\\\\\\\"quoted\\\"\n\n", iniConf.toString());
     }
 
     @Test
@@ -410,6 +410,13 @@ public class IniConfTests {
     @Test
     void parserDecodesQuotedValues() {
         IniConf iniConf = new IniConf("key = \"C:\\\\directory\\\\\\\"quoted\\\"\"");
+
+        assertEquals("C:\\directory\\\"quoted\"", iniConf.get("key"));
+    }
+
+    @Test
+    void parserDecodesUnquotedValues() {
+        IniConf iniConf = new IniConf("key = C:\\\\directory\\\\\\\"quoted\\\"");
 
         assertEquals("C:\\directory\\\"quoted\"", iniConf.get("key"));
     }
