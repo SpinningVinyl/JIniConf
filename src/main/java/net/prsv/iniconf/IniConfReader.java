@@ -22,7 +22,7 @@ public final class IniConfReader {
      * @param filename name of the UTF-8 encoded input file
      * @return the resulting {@code Optional<IniConf>} or {@code Optional.empty()}
      * @throws NullPointerException if {@code filename} is {@code null}
-     * @throws IllegalArgumentException if the file contains invalid INI content
+     * @throws IniConfFormatException if the file contains invalid INI content
      */
     public static Optional<IniConf> read(String filename) {
         try {

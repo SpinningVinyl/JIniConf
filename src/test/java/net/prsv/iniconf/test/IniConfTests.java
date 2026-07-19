@@ -51,9 +51,36 @@ public class IniConfTests {
     void constructorRejectsInvalidSectionHeader(String header) {
         String input = "[valid]\nkey = value\n" + header + "\nother = value";
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new IniConf(input));
+        IniConfFormatException exception = assertThrows(IniConfFormatException.class, () -> new IniConf(input));
 
-        assertTrue(exception.getMessage().contains("line 3"));
+        assertAll(
+                () -> assertEquals(3, exception.getLineNumber()),
+                () -> assertTrue(exception.getMessage().contains("line 3"))
+        );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "key without equals",
+            "invalid key = value",
+            "= value",
+            "]",
+            "not-a-key = value"
+    })
+    void constructorRejectsMalformedLines(String malformedLine) {
+        String input = "key = value\n[valid]\n" + malformedLine;
+
+        IniConfFormatException exception = assertThrows(IniConfFormatException.class, () -> new IniConf(input));
+
+        assertEquals(3, exception.getLineNumber());
+    }
+
+    @Test
+    void constructorAcceptsBlankLinesAndIndentedComments() {
+        IniConf iniConf = assertDoesNotThrow(() -> new IniConf(
+                "  ; comment\n\t# another comment\n  \t  \nkey = value"));
+
+        assertEquals("value", iniConf.get("key"));
     }
 
     @ParameterizedTest
@@ -289,7 +316,9 @@ public class IniConfTests {
         IniConf iniConf = new IniConf("key =   value with spaces   ");
 
         assertEquals("value with spaces", iniConf.get("key"));
-        assertThrows(IllegalArgumentException.class, () -> new IniConf("key = value\u0000"));
+        IniConfFormatException exception = assertThrows(
+                IniConfFormatException.class, () -> new IniConf("key = value\u0000"));
+        assertEquals(1, exception.getLineNumber());
     }
 
     @ParameterizedTest
@@ -380,9 +409,9 @@ public class IniConfTests {
             "key = unquoted\"quote"
     })
     void parserRejectsInvalidEncodedValues(String input) {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new IniConf(input));
+        IniConfFormatException exception = assertThrows(IniConfFormatException.class, () -> new IniConf(input));
 
-        assertTrue(exception.getMessage().contains("line 1"));
+        assertEquals(1, exception.getLineNumber());
     }
 
     @Test

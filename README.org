@@ -27,9 +27,10 @@ iniConf.put("Server.HTTP", "Host_Name", "localhost");
 String host = iniConf.get("SERVER.HTTP", "HOST_NAME");
 #+end_src
 
-Lines beginning with ~;~ or ~#~ are comments. Blank and otherwise unrecognized lines are ignored. Invalid section
-headers and malformed quoted or escaped property values cause an ~IllegalArgumentException~ containing the input line
-number. Other invalid values, such as values containing NUL, also cause an ~IllegalArgumentException~.
+Lines whose first non-whitespace character is ~;~ or ~#~ are comments. Blank lines are ignored. Every other line must
+be a valid section header or property; malformed input causes an ~IniConfFormatException~ containing the input line
+number. Invalid values supplied through the programmatic API, such as values containing NUL, cause an
+~IllegalArgumentException~.
 
 *** Value rules
 
@@ -68,7 +69,7 @@ if (result.isPresent()) {
 #+end_src
 
 ~IniConfReader.read()~ returns ~Optional.empty()~ when an I/O error occurs, the file is missing, or the input is not
-valid UTF-8. Invalid INI content causes an ~IllegalArgumentException~.
+valid UTF-8. Invalid INI content causes an ~IniConfFormatException~.
 
 An already-loaded Java string can be parsed directly:
 

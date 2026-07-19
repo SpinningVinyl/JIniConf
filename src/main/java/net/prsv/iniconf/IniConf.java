@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 public final class IniConf {
 
     private static final String SECTION_PATH_REGEX = "\\w+(?:\\.\\w+)*";
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("^[;#].*$");
+    private static final Pattern COMMENT_PATTERN = Pattern.compile("^\\s*[;#].*$");
     private static final Pattern SECTION_PATTERN = Pattern.compile("^\\s*\\[(" + SECTION_PATH_REGEX + ")]\\s*$");
     private static final Pattern PROPERTY_PATTERN = Pattern.compile("^\\s*(\\w+)\\s*=\\s*(.*?)\\s*$");
     private static final Pattern KEY_PATTERN = Pattern.compile("^\\w+$");
@@ -44,7 +44,7 @@ public final class IniConf {
      * Parses the input string and creates a new IniConf object.
      * @param input the {@link String} to be parsed
      * @throws NullPointerException if {@code input} is {@code null}
-     * @throws IllegalArgumentException if the input contains an invalid section header or property value
+     * @throws IniConfFormatException if the input contains a malformed line, section header, or property value
      */
     public IniConf(String input) {
         this();
@@ -288,7 +288,7 @@ public final class IniConf {
         if (section == this) {
             throw new IllegalArgumentException("addSection(): a section cannot contain itself.");
         }
-        ensureDisjointRegularGraphs(section);
+        ensureDisjointRegularGraphs(this, section);
         IniConf currentDict = this;
         String[] sectionPath = normalizeIdentifier(name).split("\\.");
         for (int i = 0; i < sectionPath.length - 1; i++) {
@@ -300,8 +300,8 @@ public final class IniConf {
         return currentDict.addChild(sectionPath[sectionPath.length - 1], section);
     }
 
-    private void ensureDisjointRegularGraphs(IniConf section) {
-        Set<IniConf> currentGraph = collateRegularGraph(this);
+    private void ensureDisjointRegularGraphs(IniConf root, IniConf section) {
+        Set<IniConf> currentGraph = collateRegularGraph(root);
         Set<IniConf> sectionGraph = collateRegularGraph(section);
         for (IniConf candidate : sectionGraph) {
             if (currentGraph.contains(candidate)) {
@@ -466,8 +466,8 @@ public final class IniConf {
         throw invalidPropertyValue(lineNumber, "missing closing quote");
     }
 
-    private static IllegalArgumentException invalidPropertyValue(int lineNumber, String reason) {
-        return new IllegalArgumentException("Invalid property value at line " + lineNumber + ": " + reason);
+    private static IniConfFormatException invalidPropertyValue(int lineNumber, String reason) {
+        return new IniConfFormatException(lineNumber, "Invalid property value: " + reason);
     }
 
     private void parse(String input) {
@@ -477,13 +477,14 @@ public final class IniConf {
 
         for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             String line = lines[lineIndex];
+            int lineNumber = lineIndex + 1;
             Matcher commentMatcher = COMMENT_PATTERN.matcher(line);
             Matcher sectionMatcher = SECTION_PATTERN.matcher(line);
             Matcher propertyMatcher = PROPERTY_PATTERN.matcher(line);
-            if (commentMatcher.find()) {
+            if (line.isBlank() || commentMatcher.matches()) {
                 continue; // comment -- skip the line
             }
-            if (sectionMatcher.find()) {
+            if (sectionMatcher.matches()) {
                 currentDict = this;
                 currentSection = normalizeIdentifier(sectionMatcher.group(1));
                 // create new subsections if they don't already exist
@@ -494,15 +495,22 @@ public final class IniConf {
                     }
                     currentDict = currentDict.getChild(section);
                 }
-            } else if (line.stripLeading().startsWith("[")) {
-                throw new IllegalArgumentException(
-                        "Invalid section header at line " + (lineIndex + 1) + ": " + line);
+                continue;
             }
-            if (propertyMatcher.find()) {
+            if (line.stripLeading().startsWith("[")) {
+                throw new IniConfFormatException(lineNumber, "Invalid section header: " + line);
+            }
+            if (propertyMatcher.matches()) {
                 // add new property to the current IniConf object
-                currentDict.put(propertyMatcher.group(1),
-                        deserializeValue(propertyMatcher.group(2), lineIndex + 1));
+                String value = deserializeValue(propertyMatcher.group(2), lineNumber);
+                try {
+                    currentDict.put(propertyMatcher.group(1), value);
+                } catch (IllegalArgumentException exception) {
+                    throw invalidPropertyValue(lineNumber, exception.getMessage());
+                }
+                continue;
             }
+            throw new IniConfFormatException(lineNumber, "Malformed input: " + line);
         }
     }
 
