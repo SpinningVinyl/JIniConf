@@ -1,6 +1,7 @@
 package net.prsv.iniconf;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
@@ -20,6 +21,26 @@ import java.util.regex.Pattern;
  * query arguments are normalized in the same way.
  */
 public final class IniConf {
+
+
+    private static class Tuple<K,V> {
+        K key;
+        V value;
+
+        public Tuple(K key, V value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        public K getKey() {
+            return this.key;
+        }
+
+        public V getValue() {
+            return this.value;
+        }
+
+    }
 
     private enum MissingSectionPolicy {
         RETURN_NULL,
@@ -337,72 +358,90 @@ public final class IniConf {
      */
     @Override
     public String toString() {
-        return flatten(this, null);
+        return flatten();
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
+    public boolean equals(Object other) {
+        if (this == other) {
             return true;
         }
-        if (o == null) {
+        if (other == null || other.getClass() != getClass()) {
             return false;
         }
-        if (o.getClass() != this.getClass()) {
-            return false;
-        }
-        IniConf that = (IniConf) o;
-        if (that.properties.size() != this.properties.size()) {
-            return false;
-        } else {
-            for (String key : this.properties.keySet()) {
-                if (!this.properties.get(key).equals(that.properties.get(key))) {
+
+        Deque<Tuple<IniConf, IniConf>> pending = new ArrayDeque<>();
+        pending.push(new Tuple<>(this, (IniConf) other));
+
+        while (!pending.isEmpty()) {
+            Tuple<IniConf, IniConf> pair = pending.pop();
+            IniConf left = pair.getKey();
+            IniConf right = pair.getValue();
+
+            if (!left.properties.equals(right.properties)) {
+                return false;
+            }
+            if (left.subsections.size() != right.subsections.size()) {
+                return false;
+            }
+
+            for (Map.Entry<String, IniConf> entry : left.subsections.entrySet()) {
+                IniConf rightChild = right.subsections.get(entry.getKey());
+                if (rightChild == null) {
                     return false;
                 }
+                pending.push(new Tuple<>(entry.getValue(), rightChild));
             }
         }
-        if (this.subsections.size() != that.subsections.size()) {
-            return false;
-        } else {
-            for (String section : this.subsections.keySet()) {
-                if (!this.subsections.get(section).equals(that.subsections.get(section))) {
-                    return false;
-                }
-            }
-        }
+
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result;
-        result = 23 * properties.hashCode();
-
-        if (!subsections.isEmpty()) {
-            for (String section : subsections.keySet()) {
-                result += subsections.get(section).hashCode();
+        int result = 0;
+        Deque<IniConf> pending = new ArrayDeque<>();
+        pending.push(this);
+        while (!pending.isEmpty()) {
+            IniConf current = pending.pop();
+            result += Objects.hashCode(current.properties);
+            if (!subsections.isEmpty()) {
+                result += Objects.hashCode(current.subsections.keySet());
+            }
+            for (IniConf section : current.subsections.values()) {
+                pending.push(section);
             }
         }
         return result;
     }
 
-    private String flatten(IniConf dict, String currentDictName) {
-        Map<String, String> properties = dict.getProperties();
-        Map<String, IniConf> sections = dict.getSections();
+    private String flatten() {
+        Deque<Tuple<String, IniConf>> pending = new ArrayDeque<>();
+        pending.push(new Tuple<String, IniConf>(null, this));
         StringBuilder sb = new StringBuilder();
-        if (currentDictName != null) {
-            sb.append('[').append(currentDictName).append(']').append("\n");
-        }
-        if (!properties.isEmpty()) {
-            for (String key : properties.keySet()) {
-                sb.append(key).append(" = ").append(serializeValue(properties.get(key))).append("\n");
+
+        while (!pending.isEmpty()) {
+            Tuple<String,IniConf> current = pending.pop();
+            String currentName = current.getKey();
+            IniConf currentSection = current.getValue();
+            Map<String, String> properties = currentSection.getProperties();
+            if (currentName != null) {
+                sb.append('[').append(currentName).append(']').append("\n");
             }
-            sb.append("\n");
+            if (!properties.isEmpty()) {
+                for (String key : properties.keySet()) {
+                    sb.append(key).append(" = ").append(serializeValue(properties.get(key))).append("\n");
+                }
+                sb.append("\n");
+            }
+            List<String> sectionNames = new ArrayList<>(currentSection.getSections().keySet());
+            Collections.reverse(sectionNames);
+            for (String name : sectionNames) {
+                String subSectionName = currentName == null ? name : currentName + '.' + name;
+                pending.push(new Tuple<String, IniConf>(subSectionName, currentSection.getSection(name)));
+            }
         }
-        for (String dictName : sections.keySet()) {
-            sb.append(flatten(sections.get(dictName),
-                    currentDictName == null ? dictName : currentDictName + '.' + dictName));
-        }
+
         return sb.toString();
     }
 
